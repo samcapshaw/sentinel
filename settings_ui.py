@@ -12,7 +12,7 @@ class SettingsWindow(Gtk.Window):
         GLib.set_prgname('org.omarchy.sentinel.settings')
         super().__init__(title='Sentinel · Observation Settings')
         self.set_default_size(650,780);self.set_border_width(28)
-        self.settings=load_settings();self.locations=[];self.busy=False
+        self.settings=load_settings();self.locations=[];self.busy=False;self.pending_save=False;self.preview_after=False
         colors=palette();css=Gtk.CssProvider();css.load_from_data(('''window { background: BG; color: FG; } * { font-family: "JetBrains Mono"; font-size: 12px; } label.title { font-size: 23px; color: ACC; } label.muted { color: DIM; font-size: 11px; } entry, combobox button, spinbutton, button { background: BG; color: FG; border: 1px solid DIM; border-radius: 4px; padding: 8px; } button.suggested-action { color: ACC; border-color: ACC; } checkbutton { padding: 5px; }'''.replace('BG',colors['background']).replace('FG',colors['foreground']).replace('ACC',colors['accent']).replace('DIM',colors['dark_foreground'])).encode())
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=14);self.add(box)
@@ -39,7 +39,10 @@ class SettingsWindow(Gtk.Window):
             check=Gtk.CheckButton(label=label);check.set_active(self.settings['sections'][key]);self.checks[key]=check;toggles.add(check)
         box.pack_start(toggles,False,False,0)
         self.status=Gtk.Label(label='Save applies on the next screensaver launch.',xalign=0);self.status.set_line_wrap(True);box.pack_start(self.status,False,False,0)
-        save=Gtk.Button(label='Save settings');save.get_style_context().add_class('suggested-action');save.connect('clicked',self.save);box.pack_end(save,False,False,0)
+        actions=Gtk.Box(spacing=10)
+        save=Gtk.Button(label='Save');save.connect('clicked',self.save);actions.pack_start(save,True,True,0)
+        preview=Gtk.Button(label='Save & preview');preview.get_style_context().add_class('suggested-action');preview.connect('clicked',self.save_preview);actions.pack_start(preview,True,True,0)
+        box.pack_end(actions,False,False,0)
         self.connect('delete-event',lambda *args:Gtk.main_quit());self.show_all()
     def label(self,box,text,muted=False):
         label=Gtk.Label(label=text,xalign=0);label.set_line_wrap(True)
@@ -58,19 +61,37 @@ class SettingsWindow(Gtk.Window):
         threading.Thread(target=worker,daemon=True).start()
     def completed(self,results,mode,error):
         self.busy=False
-        if error:self.status.set_text('Location lookup failed: '+error[:150]);return False
-        self.set_results(results);self.mode.set_active_id(mode);self.status.set_text('Location resolved. Review the result, then save.');return False
+        if error:self.pending_save=False;self.status.set_text('Location lookup failed: '+error[:150]);return False
+        self.set_results(results);self.mode.set_active_id(mode)
+        pending=self.pending_save;self.pending_save=False
+        if pending and len(results)==1:self.save();return False
+        self.status.set_text('Choose the matching location, then save.' if pending else 'Location resolved. Review the result, then save.');return False
     def search(self,*args):
         query=self.query.get_text();self.task(lambda:geocode(query),'local')
     def detect(self,*args):self.task(lambda:[detect_location()],'auto')
+    def save_preview(self,*args):
+        self.preview_after=True;self.save()
     def save(self,*args):
         if self.busy:return
         mode=self.mode.get_active_id();index=self.results.get_active()
-        if mode!='world' and (index<0 or index>=len(self.locations)):
-            self.status.set_text('Find or detect your location first.');return
+        selected=self.locations[index] if 0<=index<len(self.locations) else None
+        query=self.query.get_text().strip()
+        if mode=='local' and query and (not selected or query not in (selected.get('query',''),selected['name'])):
+            self.pending_save=True;self.search();return
+        if mode=='auto' and not selected:
+            self.pending_save=True;self.detect();return
+        if mode!='world' and selected is None:
+            self.status.set_text('Enter a city or US ZIP, or detect your location first.');return
+        self.radius.update();self.quakes.update()
         settings=copy.deepcopy(self.settings);settings.update(mode=mode,location=self.locations[index] if index>=0 else None,radius_km=self.radius.get_value_as_int(),quake_radius_km=self.quakes.get_value_as_int(),news_query=self.news.get_text(),units=self.units.get_active_id(),sections={key:widget.get_active() for key,widget in self.checks.items()})
         try:save_settings(settings)
         except OSError as exc:self.status.set_text('Could not save: '+str(exc));return
-        self.settings=settings;self.status.set_text('Saved. Your next screensaver launch will use these settings.')
+        self.settings=settings
+        if self.preview_after:
+            import subprocess,sys
+            from pathlib import Path
+            try:subprocess.Popen([sys.executable,str(Path(__file__).with_name('display.py')),'--preview'],start_new_session=True)
+            except OSError as exc:self.status.set_text('Settings saved, but preview could not start: '+str(exc));return
+        self.destroy();Gtk.main_quit()
 
 def main():SettingsWindow();Gtk.main()
