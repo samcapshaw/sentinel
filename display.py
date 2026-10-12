@@ -13,28 +13,38 @@ gi.require_version('Gtk','3.0')
 from gi.repository import Gtk, Gdk, GLib
 from sentinel import Dashboard, LAND, NODES, palette
 
-SCENES = (("GLOBAL OBSERVATION",54),("NETWORK",22),("CITY CAMERAS",96),("THREAT INTEL",26),("ORBITAL",30),("AVIATION",36),("ROAD CONDITIONS",34))
+SCENES = (("GLOBAL OBSERVATION",54),("NETWORK",22),("CITY CAMERAS",96),("THREAT INTEL",26),("ORBITAL",30),("AVIATION",36),("ROAD CONDITIONS",34),("NATURAL HAZARDS",42),("MEDIA EVENTS",36))
 
-def scene_at(t):
-    moment=max(0,t)%sum(duration for _,duration in SCENES)
-    for index,(_,duration) in enumerate(SCENES):
+def scene_at(t,enabled=None):
+    active=[(i,row) for i,row in enumerate(SCENES) if enabled is None or i in enabled] or [(1,SCENES[1])]
+    moment=max(0,t)%sum(row[1] for _,row in active)
+    for index,(_,duration) in active:
         if moment<duration:return index,moment,duration
         moment-=duration
     return 0,0,SCENES[0][1]
 
 class Display:
-    def __init__(self,live=False):
+    def __init__(self,live=False,settings=None):
+        from preferences import DEFAULTS,is_local
+        import copy
+        self.settings=settings or copy.deepcopy(DEFAULTS);self.local=is_local(self.settings)
+        sections=self.settings['sections'];self.enabled=[i for i in range(len(SCENES)) if {0:sections['cameras'],2:sections['cameras'],4:sections['satellites'],5:sections['flights'],6:sections['roads'],7:sections['earthquakes'] or sections['weather'],8:sections['news']}.get(i,True)]
         self.live=live
         if live:
             from live import Telemetry
             from orbits import Tracker
-            self.telemetry=Telemetry();self.tracker=Tracker()
+            self.telemetry=Telemetry()
+            if sections['satellites']:self.tracker=Tracker(observer=self.settings['location'] if self.local else None)
+            else:
+                from types import SimpleNamespace
+                self.tracker=SimpleNamespace(snapshot=lambda:{'objects':[],'track':[],'status':'Satellite source disabled','updated':0})
         from cartography import Globe
         self.globe=Globe();self.orbit_globe=Globe()
         if live:
             from cartography import Tiles
             from world_signals import WorldSignals
-            self.tiles=Tiles();self.signals=WorldSignals()
+            from regional_signals import RegionalSignals
+            self.tiles=Tiles();self.signals=WorldSignals(self.settings);self.regional=RegionalSignals(self.settings)
         self.colors=palette();self.model=Dashboard();self.start=time.monotonic();self.tick=-1
     def color(self,cr,key,alpha=1):
         h=self.colors[key].lstrip('#');cr.set_source_rgba(*(int(h[i:i+2],16)/255 for i in (0,2,4)),alpha)
@@ -55,7 +65,7 @@ class Display:
         self.color(cr,'background');cr.paint();cr.save();cr.translate((width-1600*scale)/2,(height-1000*scale)/2);cr.scale(scale,scale)
         if int(t*2)!=self.tick:self.tick=int(t*2);self.model.advance(t)
         self.text(cr,32,40,'S E N T I N E L',18,'bright_foreground')
-        scene,phase,duration=scene_at(t)
+        scene,phase,duration=scene_at(t,self.enabled)
         self.text(cr,266,39,'/ '+SCENES[scene][0],10,'dark_foreground')
         self.dot(cr,1312,35,2,'green');self.text(cr,1324,39,'LIVE' if self.live else 'DEMO',9,'green')
         from datetime import datetime,timezone
@@ -63,7 +73,7 @@ class Display:
         self.line(cr,32,61,1568,61)
         metrics=[('SENSOR MESH','07','EDGES ONLINE','accent'),('ACTIVE FLOWS',str(248+int(17*math.sin(t/4))),'CORRELATED SESSIONS','foreground'),('INGEST RATE',f'{1.28+.08*math.sin(t/6):.2f}','Gb/s  /  SYNTHETIC','cyan'),('EXPOSURE SCORE','18','LOW  /  BASELINE NORMAL','green')]
         if self.live:
-            self.current=self.telemetry.snapshot();self.orbits=self.tracker.snapshot();self.world_data=self.signals.snapshot()
+            self.current=self.telemetry.snapshot();self.orbits=self.tracker.snapshot();self.world_data=self.signals.snapshot();self.regional_data=self.regional.snapshot()
             data=self.current
             metrics=[('NETWORK INTERFACES',str(len(data['interfaces'])),'LOCAL / READ ONLY','accent'),('CONNECTIONS',str(len(data['connections'])),'ESTABLISHED TCP + UDP','foreground'),('NETWORK RATE',f"{data['bps']/1e6:.2f}",'Mb/s / INTERFACE COUNTERS','cyan'),('MEMORY USED',f"{data['memory']:.0f}%",'LOAD '+str(round(data['load'],2)),'green')]
         for i,(label,value,note,col) in enumerate(metrics):
@@ -78,15 +88,15 @@ class Display:
         cr.push_group();self.workspace(cr,scene,t,phase);current=cr.pop_group()
         cr.set_source(current);cr.paint_with_alpha(1-blend)
         if blend:
-            cr.push_group();self.workspace(cr,(scene+1)%len(SCENES),t,0);incoming=cr.pop_group()
+            cr.push_group();self.workspace(cr,self.enabled[(self.enabled.index(scene)+1)%len(self.enabled)],t,0);incoming=cr.pop_group()
             cr.set_source(incoming);cr.paint_with_alpha(blend)
-        for i,(label,_) in enumerate(SCENES):
-            x=32+i*222
+        for tab,i in enumerate(self.enabled):
+            label=SCENES[i][0];x=32+tab*1536/len(self.enabled)
             self.text(cr,x,959,label,8,'accent' if i==scene else 'dark_foreground')
             self.line(cr,x,965,x+160,965,alpha=.35)
             if i==scene:self.line(cr,x,965,x+160*(phase/duration),965,'accent',.8,1)
         self.text(cr,32,975,('LIVE METADATA / PUBLIC FEEDS / NO PACKET PAYLOAD CAPTURE' if self.live else 'DEMO TELEMETRY / CAMERA SIMULATION'),9,'dark_foreground')
-        self.text(cr,1280,975,'OMARCHY  ·  MOVE MOUSE TO DISMISS',9,'dark_foreground')
+        self.text(cr,1210,975,'S: SETTINGS  /  MOVE MOUSE TO DISMISS',9,'dark_foreground')
         cr.restore()
     def workspace(self,cr,scene,t,phase):
         if self.live:
@@ -108,6 +118,10 @@ class Display:
             self.aviation(cr,t);return
         if scene==6:
             self.road_conditions(cr,t);return
+        if scene==7:
+            self.hazards(cr,t);return
+        if scene==8:
+            self.media_events(cr,t);return
         if scene in (0,2):
             self.camera_map(cr,t);return
         if scene==3:
@@ -138,7 +152,8 @@ class Display:
     def camera_map(self,cr,t):
         viewer=getattr(self,'camera_viewer',None);cameras=viewer.cameras if viewer else []
         selected=viewer.index if viewer and viewer.index>=0 else 0
-        cam=cameras[selected] if cameras else {'city':'WORLD','view':'Acquiring public observations','provider':'','lon':0,'lat':20}
+        loc=self.settings.get('location') if self.local else None
+        cam=cameras[selected] if cameras else {'city':loc['name'] if loc else 'WORLD','view':'No nearby camera loaded / waiting for supported catalog','provider':'','lon':loc['lon'] if loc else 0,'lat':loc['lat'] if loc else 20}
         status=viewer.status if viewer else 'WAITING FOR VIEWER'
         self.panel(cr,32,155,632,787,'01','GEOSPATIAL OBSERVATION','ORTHOGRAPHIC / WGS84')
         self.text(cr,58,237,cam['city'].upper(),24,'bright_foreground')
@@ -155,7 +170,7 @@ class Display:
         self.text(cr,710,520,'ACQUIRING OBSERVATION…',14,'accent')
         self.text(cr,700,788,cam['provider'][:95]+' / MUTED',9,'dark_foreground')
         self.text(cr,690,194,'O P T I C A L   O B S E R V A T I O N',11,'bright_foreground')
-        self.text(cr,690,220,'PUBLIC SOURCES / PRELOADED HANDOFF / NO CAMERA DEVICE ACCESS',9,'dark_foreground')
+        self.text(cr,690,220,('LOCAL FOCUS / '+self.settings['location']['name'].upper()+' / '+str(self.settings['radius_km'])+' KM') if self.local else 'WORLD MODE / PUBLIC SOURCES / PRELOADED HANDOFF',9,'dark_foreground')
         for i,(label,value,color) in enumerate([('CAMERA POSITION',f"{cam['lat']:.4f}° / {cam['lon']:.4f}°",'accent'),('COVERAGE',f"{len(cameras)} SOURCES / {len({c['city'] for c in cameras})} CITIES",'cyan'),('NEXT OBSERVATION',('%02d seconds'%max(0,45-(time.monotonic()-viewer.started))) if viewer else 'WAITING','green')]):
             x=690+i*292;self.text(cr,x,859,label,9,'dark_foreground');self.text(cr,x,886,value,12,color)
         self.text(cr,690,928,'BASEMAP IS STORED AERIAL IMAGERY / CAMERA MEDIA IS LABELED BY TYPE',9,'dark_foreground')
@@ -163,7 +178,7 @@ class Display:
     def aviation(self,cr,t):
         data=self.world_data;aircraft=data['aircraft'];lat,lon=data['flight_center']
         age=time.time()-data['flight_updated'] if data['flight_updated'] else None
-        self.panel(cr,32,155,1000,787,'01','AIRSPACE OBSERVATION',data['flight_region'].upper()+' / 180 NM')
+        self.panel(cr,32,155,1000,787,'01','AIRSPACE OBSERVATION',data['flight_region'].upper()+' / '+str(data['flight_radius_nm'])+' NM')
         markers=[dict(lon=a['lon'],lat=a['lat'],heading=a['heading'],label=a['name'] if i<14 else '',color='cyan') for i,a in enumerate(aircraft)]
         self.tiles.draw(self,cr,48,211,968,535,lon,lat,7,markers)
         self.text(cr,58,783,data['flight_status'],10,'accent')
@@ -178,17 +193,111 @@ class Display:
 
     def road_conditions(self,cr,t):
         data=self.world_data;roads=data['roads'];age=time.time()-data['road_updated'] if data['road_updated'] else None
-        self.panel(cr,32,155,1000,787,'01','ROAD CONDITIONS','LONDON / PUBLISHED DISRUPTIONS')
-        markers=[dict(lon=r['lon'],lat=r['lat'],color='red' if r['severity'].lower() in ('serious','severe') else 'yellow') for r in roads]
-        self.tiles.draw(self,cr,48,211,968,610,-.1278,51.5074,12,markers)
+        self.panel(cr,32,155,1000,787,'01','ROAD CONDITIONS',data['road_region'].upper()+' / PUBLISHED REPORTS')
+        lat,lon=data['road_center']
+        markers=[dict(lon=r['lon'],lat=r['lat'],color='red' if r['severity'].lower() in ('serious','severe','active') else 'yellow') for r in roads]
+        self.tiles.draw(self,cr,48,211,968,610,lon,lat,11 if self.local else 12,markers)
         self.text(cr,58,856,data['road_status'],11,'accent')
         self.text(cr,58,885,f"{len(roads)} published disruptions / "+(('received %.0fs ago'%age) if age is not None else 'waiting for source'),10,'dark_foreground')
         self.text(cr,58,915,'Real incident locations / no simulated vehicle movement or inferred congestion speeds',10,'dark_foreground')
-        self.panel(cr,1048,155,520,787,'02','DISRUPTION BULLETIN','TfL / FIVE MINUTE REFRESH')
-        ordered=sorted(roads,key=lambda r:0 if r['severity'].lower() in ('serious','severe') else 1)
+        self.panel(cr,1048,155,520,787,'02','ROAD BULLETIN','FIVE MINUTE REFRESH')
+        ordered=sorted(roads,key=lambda r:0 if r['severity'].lower() in ('serious','severe','active') else 1)
         offset=(int(t/12)*6)%max(1,len(ordered))
         for i,r in enumerate((ordered+ordered)[offset:offset+6]):
-            y=225+i*110;self.text(cr,1068,y,r['severity'].upper()+' / '+r['category'],11,'yellow');self.text(cr,1068,y+25,r['location'][:65],9,'bright_foreground');self.text(cr,1068,y+47,r['detail'][:65],9,'foreground');self.text(cr,1068,y+69,r['updated'][:19]+' / SOURCE UPDATE',8,'dark_foreground')
+            y=225+i*110;self.text(cr,1068,y,r['severity'].upper()+' / '+r['category'],11,'yellow');self.text(cr,1068,y+25,r['location'][:65],9,'bright_foreground');self.text(cr,1068,y+47,r['detail'][:65],9,'foreground');self.text(cr,1068,y+69,r['updated'][:19]+' / '+r.get('source_time_label','SOURCE UPDATE'),8,'dark_foreground')
+
+    def wrapped(self,cr,x,y,text,width=72,lines=3,size=11,color='foreground',spacing=20):
+        import textwrap
+        for i,line in enumerate(textwrap.wrap(str(text),width=width)[:lines]):self.text(cr,x,y+i*spacing,line,size,color)
+
+    def source_age(self,data,key):
+        stamp=data[key+'_updated']
+        stale=' / STALE' if stamp and ('CACHED' in data[key+'_status'] or 'unavailable' in data[key+'_status']) else ''
+        return (('received %.0f min ago'%max(0,(time.time()-stamp)/60))+stale) if stamp else 'waiting for source'
+
+    def hazards(self,cr,t):
+        data=self.regional_data;sections=self.settings['sections'];loc=self.settings.get('location') if self.local else None
+        region=loc['name'].upper() if loc else 'WORLD'
+        quakes=data['quakes'] if sections['earthquakes'] else [];storms=data['cyclones'] if sections['weather'] else [];disasters=data['disasters'] if sections['weather'] else []
+        self.panel(cr,32,155,1000,787,'01','NATURAL HAZARDS',region+' / OFFICIAL SOURCES')
+        markers=[dict(lat=r['lat'],lon=r['lon'],color='yellow',label='M%.1f'%r['mag']) for r in quakes[:30]]
+        markers += [dict(lat=r['lat'],lon=r['lon'],color='magenta',label=r['name']) for r in storms]
+        markers += [dict(lat=r['lat'],lon=r['lon'],color='red' if r['severity']=='Red' else 'accent',label=r['kind']) for r in disasters[:15]]
+        if loc:
+            markers.append(dict(lat=loc['lat'],lon=loc['lon'],color='green',label='LOCAL FOCUS'))
+            basin=bool(storms) and int(t/14)%2==1
+            storm=storms[int(t/28)%len(storms)] if basin else None
+            center_lon=(loc['lon']+storm['lon'])/2 if storm else loc['lon'];center_lat=(loc['lat']+storm['lat'])/2 if storm else loc['lat']
+            self.tiles.draw(self,cr,48,211,968,365,center_lon,center_lat,3 if basin else 5,markers)
+            self.text(cr,65,234,'BASIN CONTEXT / ACTIVE CYCLONE POSITIONS' if basin else 'REGIONAL CONTEXT / REPORTED EVENTS',9,'bright_foreground')
+        else:self.globe.draw(self,cr,530,397,181,-110+t*.4,18,t,markers)
+        key='quakes' if sections['earthquakes'] else 'disasters'
+        self.text(cr,58,602,data[key+'_status']+' / '+self.source_age(data,key),9,'dark_foreground')
+        weather=data['weather'];current=weather.get('current',{});units=weather.get('current_units',{});daily=weather.get('daily',{})
+        if current and sections['weather']:
+            self.text(cr,58,640,'MODELED CONDITIONS / '+current.get('time','')+' LOCAL',9,'dark_foreground')
+            for i,(label,value,unit) in enumerate([('TEMPERATURE',current.get('temperature_2m','—'),units.get('temperature_2m','')),('WIND',current.get('wind_speed_10m','—'),units.get('wind_speed_10m','')),('PRECIPITATION',current.get('precipitation','—'),units.get('precipitation',''))]):
+                x=58+i*315;self.text(cr,x,664,label,9,'dark_foreground');self.text(cr,x,698,str(value)+' '+unit,24,'cyan')
+            for i,date in enumerate(daily.get('time',[])[:3]):
+                value=lambda field:daily.get(field,['—']*3)[i]
+                self.text(cr,58+i*315,727,date[5:]+f" / {value('temperature_2m_min')}–{value('temperature_2m_max')}° / rain {value('precipitation_probability_max')}%",10,'foreground')
+            self.text(cr,58,751,'Open-Meteo / '+self.source_age(data,'weather'),9,'dark_foreground')
+        else:
+            self.text(cr,58,658,'WEATHER / GLOBAL DISASTER OBSERVATION' if not loc else data['weather_status'],11,'cyan')
+            for i,r in enumerate(disasters[:3]):self.wrapped(cr,58,689+i*24,r['title'],width=120,lines=1,size=10)
+        self.line(cr,58,771,1006,771)
+        if sections['weather']:
+            self.text(cr,58,795,data['outlook_status']+' / '+self.source_age(data,'outlook'),10,'magenta')
+            if data['outlook']:
+                item=data['outlook'][0];self.wrapped(cr,58,820,item['detail'],width=125,lines=4,size=10,spacing=21)
+                self.text(cr,58,922,'Issued '+item['published'][:48]+' / BASIN OUTLOOK, NOT A LOCAL WARNING',8,'dark_foreground')
+        self.panel(cr,1048,155,520,787,'02','REGIONAL BULLETIN','ALERTS / SEISMIC / CYCLONES')
+        self.text(cr,1068,222,'WEATHER ALERTS',10,'accent')
+        alerts=data['alerts']
+        if sections['weather']:
+            if alerts:
+                alert=alerts[int(t/12)%len(alerts)];self.wrapped(cr,1068,248,alert['title']+' / '+alert['severity'],width=53,lines=2,size=12,color='yellow');self.wrapped(cr,1068,292,alert['detail'],width=66,lines=3,size=10)
+                self.text(cr,1068,358,alert['published'][:25],9,'dark_foreground')
+            else:self.wrapped(cr,1068,249,'Last NWS response: no active alerts at this point.' if data['alerts_updated'] else data['alerts_status'],width=63,lines=3,size=10)
+            self.text(cr,1068,383,'NWS / '+self.source_age(data,'alerts'),9,'dark_foreground')
+        self.line(cr,1068,405,1548,405)
+        self.text(cr,1068,435,'EARTHQUAKES / M2.5+ / PAST 7 DAYS',10,'accent')
+        self.text(cr,1068,459,(str(self.settings['quake_radius_km'])+' KM RADIUS / ' if loc else 'WORLD / ')+self.source_age(data,'quakes'),9,'dark_foreground')
+        if quakes:
+            offset=(int(t/10)*5)%len(quakes)
+            from datetime import datetime,timezone
+            for i,r in enumerate((quakes+quakes)[offset:offset+min(5,len(quakes))]):
+                y=488+i*39;self.text(cr,1068,y,'M%.1f'%r['mag'],12,'yellow');self.text(cr,1120,y,r['title'][:58],9,'foreground')
+                stamp=datetime.fromtimestamp(r['time'],timezone.utc).strftime('%m-%d %H:%M UTC')
+                self.text(cr,1120,y+16,stamp+((' / %.0f km away'%r['distance']) if r['distance'] is not None else ''),8,'dark_foreground')
+        else:self.text(cr,1068,492,'No events in this feed / radius' if data['quakes_updated'] else data['quakes_status'],9,'dark_foreground')
+        self.line(cr,1068,699,1548,699);self.text(cr,1068,725,'TROPICAL CYCLONES / NHC',10,'magenta')
+        for i,r in enumerate(storms[:3]):
+            y=754+i*48;self.text(cr,1068,y,r['name']+' / '+r['classification']+' / '+str(r['wind'])+' kt',11,'bright_foreground')
+            self.text(cr,1068,y+19,r['basin'].upper()+' / '+r['updated'][:19]+' UTC',9,'dark_foreground')
+        if not storms:self.wrapped(cr,1068,755,'No relevant active systems returned.' if data['cyclones_updated'] else data['cyclones_status'],width=64,lines=2,size=10)
+        self.text(cr,1068,910,'NHC / '+self.source_age(data,'cyclones'),9,'dark_foreground')
+
+    def media_events(self,cr,t):
+        data=self.regional_data;news=data['news'];loc=self.settings.get('location') if self.local else None
+        self.panel(cr,32,155,1000,787,'01','MEDIA EVENTS','PUBLISHER REPORTS / NOT OFFICIAL ALERTS')
+        self.text(cr,58,228,'L O C A L   S I G N A L' if loc else 'W O R L D   S I G N A L',11,'accent')
+        if news:
+            index=int(t/12)%len(news);item=news[index]
+            self.wrapped(cr,58,282,item['title'],width=65,lines=4,size=21,color='bright_foreground',spacing=33)
+            self.text(cr,58,430,item['source'][:80],12,'cyan');self.text(cr,58,459,item['published'][:70],10,'dark_foreground')
+            self.line(cr,58,490,1006,490)
+            for i,item in enumerate((news+news)[index+1:index+6]):
+                y=540+i*75;self.wrapped(cr,58,y,item['title'],width=110,lines=2,size=11,spacing=20);self.text(cr,58,y+44,item['source'][:65]+' / '+item['published'][:31],8,'dark_foreground')
+        else:self.text(cr,58,290,data['news_status'],12,'dark_foreground')
+        self.panel(cr,1048,155,520,787,'02','OBSERVATION FOCUS',self.settings['mode'].upper())
+        markers=[dict(lon=loc['lon'],lat=loc['lat'],active=True,label=loc['name'])] if loc else []
+        self.globe.draw(self,cr,1308,438,181,loc['lon'] if loc else -110+t*.5,loc['lat'] if loc else 20,t,markers)
+        self.wrapped(cr,1072,683,loc['name']+', '+loc['region'] if loc else 'Worldwide headline selection',width=43,lines=2,size=15,color='bright_foreground',spacing=24)
+        self.wrapped(cr,1072,750,data['news_status'],width=62,lines=3,size=10,color='accent')
+        self.text(cr,1072,824,self.source_age(data,'news')+' / 15 MIN REFRESH',9,'dark_foreground')
+        self.text(cr,1072,852,str(len(news))+' HEADLINES / RSS SOURCE ORDER',9,'dark_foreground')
+        self.wrapped(cr,1072,891,'News relevance comes from the selected query. Headlines do not confirm hazards or measure social-media popularity.',width=62,lines=3,size=9,color='dark_foreground',spacing=16)
 
     def orbital(self,cr,t):
         data=self.orbits
@@ -390,19 +499,25 @@ def manager_parent():
     return (pid if owned else None), b'--preview' in args
 
 class Window(Gtk.Window):
-    def __init__(self,preview=False,demo=False):
+    def __init__(self,preview=False,demo=False,settings=None):
         self.parent_pid,self.managed_preview=manager_parent();self.preview=preview or self.managed_preview
         GLib.set_prgname(('io.github.whiskeytangofussell.screensavermanager.preview' if self.managed_preview else 'org.omarchy.sentinel.preview') if self.preview else 'org.omarchy.screensaver')
         super().__init__(title='Sentinel · Security Observation Network')
         self.set_default_size(1440,900);self.set_decorated(self.preview)
-        self.view=Gtk.DrawingArea();self.overlay=Gtk.Overlay();self.overlay.add(self.view);self.add(self.overlay);self.display=Display(live=not demo)
+        self.view=Gtk.DrawingArea();self.overlay=Gtk.Overlay();self.overlay.add(self.view);self.add(self.overlay);self.display=Display(live=not demo,settings=settings)
         self.camera_viewer=None
-        if not demo:
+        self.regional_cameras=None
+        if not demo and self.display.settings['sections']['cameras']:
+            import json
+            from preferences import local_cameras
+            from regional_cameras import RegionalCameras
             from camera_viewer import CameraViewer
-            self.camera_viewer=CameraViewer(self.overlay,self.view,self.dismiss);self.display.camera_viewer=self.camera_viewer
+            cameras=local_cameras(json.loads((Path(__file__).parent/'cameras.json').read_text()),self.display.settings)
+            self.camera_viewer=CameraViewer(self.overlay,self.view,self.key_press,cameras=cameras);self.display.camera_viewer=self.camera_viewer
+            self.regional_cameras=RegionalCameras(self.display.settings)
         self.view.connect('draw',self.draw)
         self.add_events(Gdk.EventMask.POINTER_MOTION_MASK|Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.KEY_PRESS_MASK|Gdk.EventMask.FOCUS_CHANGE_MASK)
-        self.connect('key-press-event',self.dismiss);self.connect('button-press-event',self.dismiss)
+        self.connect('key-press-event',self.key_press);self.connect('button-press-event',self.dismiss)
         self.connect('motion-notify-event',self.motion);self.connect('delete-event',self.dismiss)
         self.connect('focus-out-event',self.blur)
         self.pointer=None;self.started=time.monotonic()
@@ -413,12 +528,20 @@ class Window(Gtk.Window):
     def draw(self,widget,cr):self.display.paint(cr,widget.get_allocated_width(),widget.get_allocated_height(),time.monotonic()-self.display.start)
     def update(self):
         if self.camera_viewer:
-            t=time.monotonic()-self.display.start;scene,phase,duration=scene_at(t)
+            cameras=self.regional_cameras.take() if self.regional_cameras else None
+            if cameras:self.camera_viewer.set_cameras(cameras)
+            t=time.monotonic()-self.display.start;scene,phase,duration=scene_at(t,self.display.enabled)
             self.camera_viewer.update(scene in (0,2) and phase<duration-1.4)
             if self.camera_viewer.played:
                 cam=self.camera_viewer.cameras[self.camera_viewer.index]
                 self.display.signals.set_region(cam['city'],cam['lat'],cam['lon'])
         self.view.queue_draw();return True
+    def key_press(self,widget,event):
+        if getattr(event,'keyval',None) in (Gdk.KEY_s,Gdk.KEY_S):
+            import subprocess
+            subprocess.Popen([sys.executable,str(Path(__file__).resolve()),'--settings'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        return self.dismiss()
+
     def dismiss(self,*args):
         if self.parent_pid and not self.managed_preview:
             try:os.kill(self.parent_pid,signal.SIGTERM)
@@ -434,11 +557,16 @@ class Window(Gtk.Window):
         return False
     def shutdown(self):
         if self.camera_viewer:self.camera_viewer.close();self.camera_viewer=None
-        if self.display.live:self.display.tiles.close()
+        if self.display.live:self.display.tiles.close();self.display.signals.close();self.display.regional.close()
         Gtk.main_quit();return False
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--preview',action='store_true');p.add_argument('--snapshot',type=Path);p.add_argument('--demo',action='store_true',help='Offline simulated display');args=p.parse_args()
-    if args.snapshot:
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--preview',action='store_true');p.add_argument('--snapshot',type=Path);p.add_argument('--demo',action='store_true',help='Offline simulated display');p.add_argument('--settings',action='store_true',help='Configure location and sources');args=p.parse_args()
+    if args.settings:
+        from settings_ui import main
+        main()
+    elif args.snapshot:
         surface=cairo.ImageSurface(cairo.FORMAT_ARGB32,3240,2160);Display().paint(cairo.Context(surface),3240,2160,17);surface.write_to_png(str(args.snapshot))
-    else:Window(args.preview,args.demo);Gtk.main()
+    else:
+        from preferences import runtime_settings
+        Window(args.preview,args.demo,settings=None if args.demo else runtime_settings());Gtk.main()

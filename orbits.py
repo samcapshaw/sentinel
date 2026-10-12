@@ -59,7 +59,8 @@ def fetch_json(url, filename, ttl=21600):
 
 
 class Tracker:
-    def __init__(self):
+    def __init__(self,observer=None):
+        self.observer=observer
         self.lock = threading.Lock()
         self.data = {'objects': [], 'track': [], 'status': 'Loading CelesTrak orbital elements', 'updated': 0}
         threading.Thread(target=self.run, daemon=True).start()
@@ -107,6 +108,11 @@ class Tracker:
                     if point:
                         objects.append({'name': fields['OBJECT_NAME'], 'id': fields['NORAD_CAT_ID'], 'epoch': fields['EPOCH'], 'point': point})
                 selected = int(now//30)%len(objects) if objects else 0
+                if objects and self.observer:
+                    from preferences import distance_km
+                    nearby=sorted(range(len(objects)),key=lambda i:distance_km(self.observer['lat'],self.observer['lon'],objects[i]['point'][1],objects[i]['point'][0]))[:5]
+                    selected=nearby[int(now//30)%len(nearby)]
+                    status='SGP4 / nearest ground positions to '+self.observer['name']+' / tracked subset'
                 track = []
                 if objects:
                     target = objects[selected]

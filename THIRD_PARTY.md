@@ -37,3 +37,11 @@ Aerial basemap: Esri World Imagery. Source: Esri, Vantor, Earthstar Geographics,
 Aircraft observations: ADSB.lol, Open Database License (ODbL) 1.0. Data is fetched at runtime; no aircraft database is bundled. https://www.adsb.lol/docs/open-data/api/
 
 Road disruptions: Powered by TfL Open Data. https://tfl.gov.uk/info-for/open-data-users/
+
+Location search: Zippopotam.us and Open-Meteo/GeoNames. Approximate IP location: ipwho.is (only in Automatic mode). Open-Meteo weather/location data attribution: Open-Meteo.com / GeoNames, CC BY 4.0; public hosted APIs are subject to their non-commercial usage terms. https://open-meteo.com/en/terms https://www.geonames.org/
+
+Hazards: USGS earthquake feeds, NOAA National Weather Service, NOAA National Hurricane Center, and GDACS (European Commission Joint Research Centre / United Nations). Provider data is fetched at runtime, with source labels and timestamps. https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php https://www.weather.gov/documentation/services-web-api https://www.nhc.noaa.gov/aboutrss.shtml https://www.gdacs.org/
+
+California camera metadata and lane closures: Caltrans Commercial Wholesale Web Portal 2. https://cwwp2.dot.ca.gov/
+
+Media headlines: Google News RSS and the named publishers. Headlines are displayed with publisher attribution; no publisher article bodies or footage are bundled.

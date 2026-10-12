@@ -58,8 +58,8 @@ onError:e=>report('error '+e.data)}})}
 
 
 class CameraViewer:
-    def __init__(self, overlay, canvas, dismiss):
-        self.cameras=[c for c in json.loads((Path(__file__).parent/'cameras.json').read_text()) if c.get('video_id') or c.get('media_url')]
+    def __init__(self, overlay, canvas, dismiss, cameras=None):
+        self.cameras=[c for c in (cameras if cameras is not None else json.loads((Path(__file__).parent/'cameras.json').read_text())) if c.get('video_id') or c.get('media_url')]
         self.index=-1;self.cursor=-1;self.active=False;self.started=0;self.status='CONNECTING';self.failures={};self.played=False;self.last_error=''
         self.current=None;self.pending=None;self.generation=0;self.canvas=canvas
         self.fixed=Gtk.Fixed();self.fixed.set_hexpand(True);self.fixed.set_vexpand(True)
@@ -137,7 +137,11 @@ class CameraViewer:
         if not self.active:return
         self.last_error=reason
         slot=self.slots[number]
-        self.failures[slot['index']]=time.monotonic()+600
+        camera=self.cameras[slot['index']] if 0<=slot['index']<len(self.cameras) else {}
+        if camera.get('kind')=='hls' and camera.get('fallback_url'):
+            self.cameras[slot['index']]={**camera,'kind':'image','media_url':camera['fallback_url'],'fallback_url':''}
+            self.cursor=slot['index']-1
+        else:self.failures[slot['index']]=time.monotonic()+600
         slot['web'].set_opacity(0);slot['web'].load_uri('about:blank');slot['playing_at']=None
         if number==self.pending:self.pending=None
         if number==self.current:self.current=None;self.played=False
@@ -179,6 +183,10 @@ class CameraViewer:
                 slot['web'].set_opacity(1)
                 if outgoing is not None:
                     old=self.slots[outgoing]['web'];old.set_opacity(0);old.load_uri('about:blank');old.hide()
+
+    def set_cameras(self,cameras):
+        self.update(False);self.cameras=list(cameras);self.index=-1;self.cursor=-1;self.failures={};self.generation+=1
+        for slot in self.slots:slot['generation']=-1
 
     def close(self):
         self.active=False

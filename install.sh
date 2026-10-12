@@ -3,7 +3,7 @@ set -euo pipefail
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 app_dir="$HOME/.local/share/sentinel-screensaver"
 mkdir -p "$app_dir" "$HOME/.local/bin"
-for file in display.py cartography.py world_signals.py camera_viewer.py sentinel.py live.py orbits.py cameras.json coastlines.json requirements.txt; do
+for file in display.py cartography.py world_signals.py preferences.py settings_ui.py regional_cameras.py regional_signals.py public_feeds.py camera_viewer.py sentinel.py live.py orbits.py cameras.json coastlines.json requirements.txt; do
     install -m 644 "$source_dir/$file" "$app_dir/$file"
 done
 mkdir -p "$app_dir/vendor"
@@ -19,6 +19,19 @@ fi
 exec "$HOME/.local/share/sentinel-screensaver/venv/bin/python" "$HOME/.local/share/sentinel-screensaver/display.py" "$@"
 WRAPPER
 chmod 755 "$HOME/.local/bin/sentinel-screensaver"
+mkdir -p "$HOME/.local/share/applications" "$app_dir/icons"
+install -m 644 "$source_dir/sentinel.svg" "$app_dir/icons/sentinel.svg"
+cat > "$HOME/.local/share/applications/sentinel-settings.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Sentinel Settings
+Comment=Location and observation sources for the Sentinel screensaver
+Exec="$HOME/.local/bin/sentinel-screensaver" --settings
+Icon=$app_dir/icons/sentinel.svg
+Terminal=false
+Categories=Settings;Utility;
+StartupWMClass=org.omarchy.sentinel.settings
+DESKTOP
 if command -v screensaver-manager >/dev/null; then
     manager_config="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/screensaver-manager.json"
     if [[ -f "$manager_config" ]]; then cp -p "$manager_config" "$manager_config.sentinel-backup.$(date +%s)"; fi
