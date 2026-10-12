@@ -1,0 +1,10 @@
+[
+ {"city":"New York","view":"Times Square","provider":"EarthCam","url":"https://www.earthcam.com/usa/newyork/timessquare/?cam=tsrobo1"},
+ {"city":"Tokyo","view":"Shibuya skyline","provider":"SHIBUYA SKY official channel","url":"https://www.youtube.com/@shibuyasky7253/live"},
+ {"city":"London","view":"Thames and city skyline","provider":"SkylineWebcams","url":"https://www.skylinewebcams.com/en/webcam/united-kingdom/england/london/river-thames.html"},
+ {"city":"Dublin","view":"Temple Bar street","provider":"EarthCam","url":"https://www.earthcam.com/world/ireland/dublin/index.php?cam=templebar"},
+ {"city":"Prague","view":"Old Town Square","provider":"Grand Hotel Praha","url":"https://www.grandhotelpraha.cz/en/live-cam/"},
+ {"city":"Rome","view":"Piazza Venezia","provider":"SkylineWebcams","url":"https://www.skylinewebcams.com/en/webcam/italia/lazio/roma/piazza-venezia.html"},
+ {"city":"Buenos Aires","view":"Obelisk and city avenues","provider":"SkylineWebcams","url":"https://www.skylinewebcams.com/en/webcam/argentina/buenos-aires/buenos-aires/obelisco.html"},
+ {"city":"Sydney","view":"Harbour and skyline","provider":"Webcam Sydney","url":"https://webcamsydney.com/"}
+]
