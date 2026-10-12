@@ -1,10 +1,740 @@
 [
- {"city":"New York","view":"Times Square","provider":"EarthCam","url":"https://www.earthcam.com/usa/newyork/timessquare/?cam=tsrobo1"},
- {"city":"Tokyo","view":"Shibuya skyline","provider":"SHIBUYA SKY official channel","url":"https://www.youtube.com/@shibuyasky7253/live"},
- {"city":"London","view":"Thames and city skyline","provider":"SkylineWebcams","url":"https://www.skylinewebcams.com/en/webcam/united-kingdom/england/london/river-thames.html"},
- {"city":"Dublin","view":"Temple Bar street","provider":"EarthCam","url":"https://www.earthcam.com/world/ireland/dublin/index.php?cam=templebar"},
- {"city":"Prague","view":"Old Town Square","provider":"Grand Hotel Praha","url":"https://www.grandhotelpraha.cz/en/live-cam/"},
- {"city":"Rome","view":"Piazza Venezia","provider":"SkylineWebcams","url":"https://www.skylinewebcams.com/en/webcam/italia/lazio/roma/piazza-venezia.html"},
- {"city":"Buenos Aires","view":"Obelisk and city avenues","provider":"SkylineWebcams","url":"https://www.skylinewebcams.com/en/webcam/argentina/buenos-aires/buenos-aires/obelisco.html"},
- {"city":"Sydney","view":"Harbour and skyline","provider":"Webcam Sydney","url":"https://webcamsydney.com/"}
+  {
+    "city": "London",
+    "view": "Trafalgar Square",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5074,
+    "lon": -0.12765,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.06502.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " 5TH ST / CONGRESS AVE",
+    "provider": "City of Austin",
+    "lat": 30.267119,
+    "lon": -97.743172,
+    "media_url": "https://cctv.austinmobility.io/image/354.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "8 Ave / 4 St SW",
+    "provider": "City of Calgary",
+    "lat": 51.0457185,
+    "lon": -114.071668,
+    "media_url": "https://trafficcam.calgary.ca/loc168.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "San Francisco",
+    "view": "TV301 -- US-101 : At Octavia St",
+    "provider": "Caltrans",
+    "lat": 37.77146,
+    "lon": -122.42323,
+    "media_url": "https://wzmedia.dot.ca.gov/D4/S101_at_Octavia_St.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Los Angeles",
+    "view": "US-101 : (594) Vignes St",
+    "provider": "Caltrans",
+    "lat": 34.05334,
+    "lon": -118.23141,
+    "media_url": "https://wzmedia.dot.ca.gov/D7/CCTV-594.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "San Diego",
+    "view": "(C014) I-5 : First Avenue",
+    "provider": "Caltrans",
+    "lat": 32.72285,
+    "lon": -117.16356,
+    "media_url": "https://wzmedia.dot.ca.gov/D11/C014_SB_5_at_First_St.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Viru väljak (suund Mere pst ja Narva mnt)",
+    "provider": "City of Tallinn",
+    "lat": 59.436563,
+    "lon": 24.752702,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam103.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Sydney",
+    "view": "Harbour and CBD",
+    "provider": "CamStreamer / WebcamSydney",
+    "url": "https://camstreamer.com/live/stream/410679206-webcamsydney-1-live-streaming-24-7",
+    "video_id": "5uZa3-RMFos",
+    "lon": 151.2093,
+    "lat": -33.8688
+  },
+  {
+    "city": "Prague",
+    "view": "City panorama",
+    "provider": "CamStreamer / CamStreamer Prague",
+    "url": "https://camstreamer.com/live/stream/836155166-creative-live-streaming-from-prague",
+    "video_id": "kvYMIaXclIE",
+    "lon": 14.4378,
+    "lat": 50.0755
+  },
+  {
+    "city": "Hong Kong",
+    "view": "Connaught Road Central near Exchange Square [H106F]",
+    "provider": "Hong Kong Transport Department",
+    "lat": 22.2859674,
+    "lon": 114.1557495,
+    "media_url": "https://tdcctv.data.one.gov.hk/H106F.JPG",
+    "kind": "image",
+    "url": "https://data.gov.hk/en-data/dataset/hk-td-tis_2-traffic-snapshot-images"
+  },
+  {
+    "city": "Oslo",
+    "view": "Hjortnes",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.91114,
+    "lon": 10.7041645,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0329002_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "Georgia Street",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.294533,
+    "lon": -123.136907,
+    "media_url": "https://www.drivebc.ca/images/19.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  },
+  {
+    "city": "London",
+    "view": "Northumberland Ave/Victoria Emb",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5064,
+    "lon": -0.12224,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.07500.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " 6TH ST / CONGRESS AVE",
+    "provider": "City of Austin",
+    "lat": 30.268066,
+    "lon": -97.742813,
+    "media_url": "https://cctv.austinmobility.io/image/133.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "9 Avenue / 5 Street SW",
+    "provider": "City of Calgary",
+    "lat": 51.0448849,
+    "lon": -114.0738336,
+    "media_url": "https://trafficcam.calgary.ca/loc129.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "San Francisco",
+    "view": "TV304 -- I-80 : US-101",
+    "provider": "Caltrans",
+    "lat": 37.77025,
+    "lon": -122.40554,
+    "media_url": "https://wzmedia.dot.ca.gov/D4/E80_at_JCT_101.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Los Angeles",
+    "view": "I-110 : (188) 1st St",
+    "provider": "Caltrans",
+    "lat": 34.0597,
+    "lon": -118.2524,
+    "media_url": "https://wzmedia.dot.ca.gov/D7/CCTV-188.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "San Diego",
+    "view": "(C018) NB 5 : SR-163",
+    "provider": "Caltrans",
+    "lat": 32.72452,
+    "lon": -117.15386,
+    "media_url": "https://wzmedia.dot.ca.gov/D11/C018_NB_5_at_Rte_163.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Viru väljak (suund Pärnu mnt)",
+    "provider": "City of Tallinn",
+    "lat": 59.436449,
+    "lon": 24.752409,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam104.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Hong Kong",
+    "view": "Central - Wan Chai Bypass near Central [CW103F]",
+    "provider": "Hong Kong Transport Department",
+    "lat": 22.287376332,
+    "lon": 114.156971946,
+    "media_url": "https://tdcctv.data.one.gov.hk/CW103F.JPG",
+    "kind": "image",
+    "url": "https://data.gov.hk/en-data/dataset/hk-td-tis_2-traffic-snapshot-images"
+  },
+  {
+    "city": "Oslo",
+    "view": "Ullevål",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.94821,
+    "lon": 10.726195,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0329034_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "Causeway",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.295792,
+    "lon": -123.1366403,
+    "media_url": "https://www.drivebc.ca/images/17.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  },
+  {
+    "city": "London",
+    "view": "Charing Cross Rd/Cranbourne St",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5113,
+    "lon": -0.1283,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.07550.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " 5TH ST / BRAZOS ST",
+    "provider": "City of Austin",
+    "lat": 30.266756,
+    "lon": -97.741837,
+    "media_url": "https://cctv.austinmobility.io/image/135.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "11 Ave / 4 St SW",
+    "provider": "City of Calgary",
+    "lat": 51.0427157,
+    "lon": -114.071569,
+    "media_url": "https://trafficcam.calgary.ca/loc202.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "San Francisco",
+    "view": "TV316 -- I-80 : 6th Street",
+    "provider": "Caltrans",
+    "lat": 37.77696,
+    "lon": -122.40347,
+    "media_url": "https://wzmedia.dot.ca.gov/D4/E80_at_6th_St.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Los Angeles",
+    "view": "I-110 : (833) 3th St On-Ramp",
+    "provider": "Caltrans",
+    "lat": 34.056628,
+    "lon": -118.255061,
+    "media_url": "https://cwwp2.dot.ca.gov/data/d7/cctv/image/i1108333thstonramp/i1108333thstonramp.jpg",
+    "kind": "image",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "San Diego",
+    "view": "(C020) SB 5 : SR-94",
+    "provider": "Caltrans",
+    "lat": 32.71385,
+    "lon": -117.148,
+    "media_url": "https://wzmedia.dot.ca.gov/D11/C020_SB_5_at_Rte_94.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Narva mnt - A.Laikmaa tn",
+    "provider": "City of Tallinn",
+    "lat": 59.437386,
+    "lon": 24.757149,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam250.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Hong Kong",
+    "view": "Connaught Road Central near Shun Tak Centre [H110F]",
+    "provider": "Hong Kong Transport Department",
+    "lat": 22.28705,
+    "lon": 114.15305,
+    "media_url": "https://tdcctv.data.one.gov.hk/H110F.JPG",
+    "kind": "image",
+    "url": "https://data.gov.hk/en-data/dataset/hk-td-tis_2-traffic-snapshot-images"
+  },
+  {
+    "city": "Oslo",
+    "view": "Sandstuveien",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.887856,
+    "lon": 10.807426,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0329031_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "LGB North End 2",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.324198,
+    "lon": -123.130153,
+    "media_url": "https://www.drivebc.ca/images/20.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  },
+  {
+    "city": "London",
+    "view": "Piccadilly Circus",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5096,
+    "lon": -0.13484,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.07450.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " 5TH ST / COLORADO ST",
+    "provider": "City of Austin",
+    "lat": 30.267477,
+    "lon": -97.744469,
+    "media_url": "https://cctv.austinmobility.io/image/562.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "9 Ave / 6 St SW",
+    "provider": "City of Calgary",
+    "lat": 51.0449937,
+    "lon": -114.0763782,
+    "media_url": "https://trafficcam.calgary.ca/loc182.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "San Francisco",
+    "view": "TV302 -- US-101 : 17th Street",
+    "provider": "Caltrans",
+    "lat": 37.764283,
+    "lon": -122.405225,
+    "media_url": "https://wzmedia.dot.ca.gov/D4/S101_at_17th_St.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Los Angeles",
+    "view": "I-110 : (835) S/O Route 101",
+    "provider": "Caltrans",
+    "lat": 34.061486,
+    "lon": -118.249692,
+    "media_url": "https://cwwp2.dot.ca.gov/data/d7/cctv/image/i110835soroute101/i110835soroute101.jpg",
+    "kind": "image",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "San Diego",
+    "view": "(C017) SR-163 : Just North Of I-5",
+    "provider": "Caltrans",
+    "lat": 32.72647,
+    "lon": -117.15637,
+    "media_url": "https://wzmedia.dot.ca.gov/D11/C017_SB_163_JNO_Rte_5.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Narva mnt - Hobujaama tn",
+    "provider": "City of Tallinn",
+    "lat": 59.437143,
+    "lon": 24.75758,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam251.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Hong Kong",
+    "view": "Queen's Road Central near Garden Road [H109F]",
+    "provider": "Hong Kong Transport Department",
+    "lat": 22.2798272299999,
+    "lon": 114.161669399999,
+    "media_url": "https://tdcctv.data.one.gov.hk/H109F.JPG",
+    "kind": "image",
+    "url": "https://data.gov.hk/en-data/dataset/hk-td-tis_2-traffic-snapshot-images"
+  },
+  {
+    "city": "Oslo",
+    "view": "Linderud",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.943844,
+    "lon": 10.834632,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0329003_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "LGB North End 1",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.324198,
+    "lon": -123.130153,
+    "media_url": "https://www.drivebc.ca/images/18.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  },
+  {
+    "city": "London",
+    "view": "Shaftesbury Ave / Macclesfield St",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5121,
+    "lon": -0.13158,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.07458.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " 6TH ST / COLORADO ST",
+    "provider": "City of Austin",
+    "lat": 30.268417,
+    "lon": -97.744125,
+    "media_url": "https://cctv.austinmobility.io/image/1389.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "12 Avenue / 5 Street SW",
+    "provider": "City of Calgary",
+    "lat": 51.0417567,
+    "lon": -114.0741758,
+    "media_url": "https://trafficcam.calgary.ca/loc76.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "San Francisco",
+    "view": "TV317 -- I-280 : 6th Street Offramp",
+    "provider": "Caltrans",
+    "lat": 37.77145,
+    "lon": -122.3974,
+    "media_url": "https://wzmedia.dot.ca.gov/D4/N280_at_6th.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Los Angeles",
+    "view": "I-110 : (834) 3th St Off-Ramp",
+    "provider": "Caltrans",
+    "lat": 34.057402,
+    "lon": -118.25549,
+    "media_url": "https://cwwp2.dot.ca.gov/data/d7/cctv/image/i1108343thstofframp/i1108343thstofframp.jpg",
+    "kind": "image",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "San Diego",
+    "view": "(C019) NB 5 : Just North Of SR-94",
+    "provider": "Caltrans",
+    "lat": 32.72318,
+    "lon": -117.14931,
+    "media_url": "https://wzmedia.dot.ca.gov/D11/C019_NB_5_JNO_Rte_94.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Gonsiori tn - A.Laikmaa tn",
+    "provider": "City of Tallinn",
+    "lat": 59.435603,
+    "lon": 24.757367,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam248.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Hong Kong",
+    "view": "Connaught Road West Flyover near Shun Tak Centre - Westbound [AID04218]",
+    "provider": "Hong Kong Transport Department",
+    "lat": 22.287529096,
+    "lon": 114.151528111,
+    "media_url": "https://tdcctv.data.one.gov.hk/AID04218.JPG",
+    "kind": "image",
+    "url": "https://data.gov.hk/en-data/dataset/hk-td-tis_2-traffic-snapshot-images"
+  },
+  {
+    "city": "Oslo",
+    "view": "Fiskevollbukta",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.841663,
+    "lon": 10.77669,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0329007_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "Marine Drive",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.3271249,
+    "lon": -123.1329677,
+    "media_url": "https://www.drivebc.ca/images/22.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  },
+  {
+    "city": "London",
+    "view": "Charing Cross Rd / Cambridge Circus",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5131,
+    "lon": -0.12914,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.07551.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " COLORADO ST / 4TH ST",
+    "provider": "City of Austin",
+    "lat": 30.266569,
+    "lon": -97.744812,
+    "media_url": "https://cctv.austinmobility.io/image/561.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "9 Ave / 1 St SW",
+    "provider": "City of Calgary",
+    "lat": 51.0447401,
+    "lon": -114.065353,
+    "media_url": "https://trafficcam.calgary.ca/loc170.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "Los Angeles",
+    "view": "I-110 : (836) Alpine St On-Ramp",
+    "provider": "Caltrans",
+    "lat": 34.064651,
+    "lon": -118.244937,
+    "media_url": "https://cwwp2.dot.ca.gov/data/d7/cctv/image/i110836alpinestonramp/i110836alpinestonramp.jpg",
+    "kind": "image",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "San Diego",
+    "view": "(C025) SR-94 : Just East Of I-5",
+    "provider": "Caltrans",
+    "lat": 32.71329,
+    "lon": -117.14517,
+    "media_url": "https://wzmedia.dot.ca.gov/D11/C025_Rte_94_JEO_Rte_5.stream/playlist.m3u8",
+    "kind": "hls",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Estonia pst - A.Laikmaa tn",
+    "provider": "City of Tallinn",
+    "lat": 59.435646,
+    "lon": 24.757835,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam247.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Hong Kong",
+    "view": "Harcourt Road near Tim Mei Avenue - Eastbound [TDSIEC10001]",
+    "provider": "Hong Kong Transport Department",
+    "lat": 22.280405414,
+    "lon": 114.164308606,
+    "media_url": "https://tdcctv.data.one.gov.hk/TDSIEC10001.JPG",
+    "kind": "image",
+    "url": "https://data.gov.hk/en-data/dataset/hk-td-tis_2-traffic-snapshot-images"
+  },
+  {
+    "city": "Oslo",
+    "view": "Furuset",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.939404,
+    "lon": 10.900307,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0329004_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "Taylor Way",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.327636,
+    "lon": -123.134727,
+    "media_url": "https://www.drivebc.ca/images/21.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  },
+  {
+    "city": "London",
+    "view": "Parliament Square",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5011,
+    "lon": -0.12628,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.06501.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " 5TH ST / LAVACA ST",
+    "provider": "City of Austin",
+    "lat": 30.267796,
+    "lon": -97.745544,
+    "media_url": "https://cctv.austinmobility.io/image/353.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "5 Avenue / 5 Street SW",
+    "provider": "City of Calgary",
+    "lat": 51.0486767,
+    "lon": -114.0736443,
+    "media_url": "https://trafficcam.calgary.ca/loc122.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "Los Angeles",
+    "view": "I-110 : (832) 6th St Off-Ramp",
+    "provider": "Caltrans",
+    "lat": 34.051649,
+    "lon": -118.259584,
+    "media_url": "https://cwwp2.dot.ca.gov/data/d7/cctv/image/i1108326thstofframp/i1108326thstofframp.jpg",
+    "kind": "image",
+    "url": "https://cwwp2.dot.ca.gov/"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Estonia pst - Teatri väljak (suund Tammsaare park)",
+    "provider": "City of Tallinn",
+    "lat": 59.434566,
+    "lon": 24.75182,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam001.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Oslo",
+    "view": "Sandvika øst",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.89262,
+    "lon": 10.539927,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0229009_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "Capilano - N",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.332622,
+    "lon": -123.115036,
+    "media_url": "https://www.drivebc.ca/images/622.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  },
+  {
+    "city": "London",
+    "view": "Strand/Lancaster Place",
+    "provider": "Powered by TfL Open Data",
+    "lat": 51.5114,
+    "lon": -0.11924,
+    "media_url": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.06590.mp4",
+    "kind": "clip",
+    "url": "https://tfl.gov.uk/info-for/open-data-users/"
+  },
+  {
+    "city": "Austin",
+    "view": " 7TH ST / COLORADO ST",
+    "provider": "City of Austin",
+    "lat": 30.269348,
+    "lon": -97.743774,
+    "media_url": "https://cctv.austinmobility.io/image/564.jpg",
+    "kind": "image",
+    "url": "https://data.austintexas.gov/Transportation-and-Mobility/Traffic-Cameras/b4k4-adkb"
+  },
+  {
+    "city": "Calgary",
+    "view": "8 Ave / 1 St SW",
+    "provider": "City of Calgary",
+    "lat": 51.0456784,
+    "lon": -114.0653382,
+    "media_url": "https://trafficcam.calgary.ca/loc181.jpg",
+    "kind": "image",
+    "url": "https://data.calgary.ca/Transportation-Transit/Traffic-Cameras/k7p9-kppz"
+  },
+  {
+    "city": "Tallinn",
+    "view": "Estonia pst - Teatri väljak (suund Reaalkool)",
+    "provider": "City of Tallinn",
+    "lat": 59.434411,
+    "lon": 24.751394,
+    "media_url": "https://ristmikud.tallinn.ee/last/cam002.jpg",
+    "kind": "image",
+    "url": "https://ristmikud.tallinn.ee/"
+  },
+  {
+    "city": "Oslo",
+    "view": "Gjelleråsen",
+    "provider": "Norwegian Public Roads Administration",
+    "lat": 59.98876,
+    "lon": 10.929779,
+    "media_url": "https://kamera.atlas.vegvesen.no/api/images/0229005_1",
+    "kind": "image",
+    "url": "https://www.vegvesen.no/trafikk/"
+  },
+  {
+    "city": "Vancouver",
+    "view": "Capilano - E",
+    "provider": "DriveBC / Province of British Columbia",
+    "lat": 49.332622,
+    "lon": -123.115036,
+    "media_url": "https://www.drivebc.ca/images/624.jpg",
+    "kind": "image",
+    "url": "https://www.drivebc.ca/"
+  }
 ]

@@ -13,7 +13,7 @@ gi.require_version('Gtk','3.0')
 from gi.repository import Gtk, Gdk, GLib
 from sentinel import Dashboard, LAND, NODES, palette
 
-SCENES = (("OVERVIEW",24),("TRAFFIC ANALYSIS",22),("CAMERA ARRAY",24),("THREAT INTELLIGENCE",26),("ORBITAL TRACKING",30))
+SCENES = (("OVERVIEW",24),("TRAFFIC ANALYSIS",22),("CITY OBSERVATION",66),("THREAT INTELLIGENCE",26),("ORBITAL TRACKING",30))
 
 def scene_at(t):
     moment=max(0,t)%sum(duration for _,duration in SCENES)
@@ -98,17 +98,8 @@ class Display:
         data=self.current
         if scene==4:
             self.orbital(cr,t);return
-        if scene==2:
-            import json
-            cameras=json.loads((Path(__file__).parent/'cameras.json').read_text())
-            self.panel(cr,32,155,1536,787,'03','PUBLIC CITY CAMERA DIRECTORY','PROVIDER PAGES / VIDEO NOT EMBEDDED')
-            for i,cam in enumerate(cameras):
-                x=60+(i%2)*760;y=235+(i//2)*130
-                self.text(cr,x,y,cam['city'].upper()+' / '+cam['view'],12,'bright_foreground')
-                self.text(cr,x,y+27,cam['provider'],10,'accent')
-                self.text(cr,x,y+51,cam['url'][:100],9,'dark_foreground')
-            self.text(cr,60,905,'Public viewing pages. Availability varies; hosted players may contain ads. No camera device is accessed.',10,'dark_foreground')
-            return
+        if scene in (0,2):
+            self.camera_map(cr,t);return
         if scene==3:
             self.panel(cr,32,155,1536,787,'04','KNOWN EXPLOITED VULNERABILITIES','CISA / PUBLIC CATALOG')
             self.text(cr,58,225,data['kev_status'],11,'accent')
@@ -133,6 +124,50 @@ class Display:
         self.panel(cr,998,526,570,416,'03','CONNECTION ACTIVITY','OBSERVED CHANGES / LOCAL CLOCK')
         for i,(stamp,message) in enumerate(data['events'][:12]):
             y=594+i*25;self.text(cr,1016,y,stamp,9,'dark_foreground');self.text(cr,1090,y,message[:70],9)
+
+    def camera_map(self,cr,t):
+        viewer=getattr(self,'camera_viewer',None)
+        cameras=viewer.cameras if viewer else []
+        selected=viewer.index if viewer and viewer.index>=0 else 0
+        self.panel(cr,32,155,1536,787,'01','GLOBAL CITY OBSERVATION','PUBLIC CAMERAS / MUTED / AUTOMATIC ROTATION')
+        scale=1.65;ox=60;oy=340
+        def project(lon,lat):return ox+(lon+180)*scale,oy+(90-lat)*scale
+        for lon in range(-180,181,30):self.line(cr,*project(lon,90),*project(lon,-90),alpha=.2)
+        for lat in range(-90,91,30):self.line(cr,*project(-180,lat),*project(180,lat),alpha=.2)
+        for shape in LAND:
+            previous=None
+            for lon,lat in shape:
+                pixel=project(lon,lat)
+                if previous and abs(pixel[0]-previous[0])<700:self.line(cr,*previous,*pixel,'foreground',.4,.65)
+                previous=pixel
+        marked=set()
+        for i,cam in enumerate(cameras):
+            if i!=selected and cam["city"] in marked:continue
+            marked.add(cam["city"])
+            px,py=project(cam['lon'],cam['lat']);active=i==selected
+            self.dot(cr,px,py,4 if active else 2,'green' if active else 'accent')
+            if active:self.text(cr,px+9,py-9,cam['city'].upper(),10,'green')
+            if active:
+                self.color(cr,'green',.35);cr.arc(px,py,10+3*math.sin(t*2),0,math.tau);cr.stroke()
+                self.line(cr,px,py,680,270,'green',.4)
+        self.color(cr,'background',.98);cr.rectangle(680,236,850,578);cr.fill()
+        cam=cameras[selected] if cameras else {'city':'CAMERA','view':'Viewer loading','provider':''}
+        status=viewer.status if viewer else 'CONNECTING'
+        self.panel(cr,680,236,850,578,'↗',cam['city'].upper()+' / '+cam['view'][:42].upper(),status)
+        self.text(cr,710,520,status,14,'accent')
+        self.text(cr,60,253,cam['city'].upper(),24,'bright_foreground')
+        self.text(cr,60,283,cam['view'][:65],12,'accent')
+        self.text(cr,60,820,f"{len(cameras)} CAMERA SOURCES / {len({c['city'] for c in cameras})} CITIES",10,'accent')
+        if cameras:
+            self.text(cr,60,718,'CAMERA LOCATION / WGS84',9,'dark_foreground')
+            self.text(cr,60,749,f"{cam['lat']:.4f}° LAT   {cam['lon']:.4f}° LON",13,'foreground')
+            self.text(cr,60,784,'OBSERVATION WINDOW / 45 SECONDS',10,'dark_foreground')
+        self.text(cr,700,788,cam['provider']+' / PUBLIC EMBED / AUDIO MUTED',10,'dark_foreground')
+        if viewer:
+            from camera_viewer import DWELL
+            remaining=max(0,DWELL-(time.monotonic()-viewer.started))
+            self.text(cr,1310,788,'NEXT CITY %02ds'%remaining,9,'accent')
+        self.text(cr,58,912,'AUTOMATIC OBSERVATION / CITY LOCATIONS / PROVIDER VIDEO RETAINS ITS ORIGINAL BRANDING',10,'dark_foreground')
 
     def orbital(self,cr,t):
         data=self.orbits
@@ -355,7 +390,11 @@ class Window(Gtk.Window):
         GLib.set_prgname(('io.github.whiskeytangofussell.screensavermanager.preview' if self.managed_preview else 'org.omarchy.sentinel.preview') if self.preview else 'org.omarchy.screensaver')
         super().__init__(title='Sentinel · Security Observation Network')
         self.set_default_size(1440,900);self.set_decorated(self.preview)
-        self.view=Gtk.DrawingArea();self.add(self.view);self.display=Display(live=not demo)
+        self.view=Gtk.DrawingArea();self.overlay=Gtk.Overlay();self.overlay.add(self.view);self.add(self.overlay);self.display=Display(live=not demo)
+        self.camera_viewer=None
+        if not demo:
+            from camera_viewer import CameraViewer
+            self.camera_viewer=CameraViewer(self.overlay,self.view,self.dismiss);self.display.camera_viewer=self.camera_viewer
         self.view.connect('draw',self.draw)
         self.add_events(Gdk.EventMask.POINTER_MOTION_MASK|Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.KEY_PRESS_MASK|Gdk.EventMask.FOCUS_CHANGE_MASK)
         self.connect('key-press-event',self.dismiss);self.connect('button-press-event',self.dismiss)
@@ -367,7 +406,11 @@ class Window(Gtk.Window):
         GLib.timeout_add(83,self.update)
         for sig in (signal.SIGTERM,signal.SIGINT,signal.SIGHUP):GLib.unix_signal_add(GLib.PRIORITY_DEFAULT,sig,self.shutdown)
     def draw(self,widget,cr):self.display.paint(cr,widget.get_allocated_width(),widget.get_allocated_height(),time.monotonic()-self.display.start)
-    def update(self):self.view.queue_draw();return True
+    def update(self):
+        if self.camera_viewer:
+            t=time.monotonic()-self.display.start;scene,phase,duration=scene_at(t)
+            self.camera_viewer.update(scene in (0,2) and phase<duration-1.4)
+        self.view.queue_draw();return True
     def dismiss(self,*args):
         if self.parent_pid and not self.managed_preview:
             try:os.kill(self.parent_pid,signal.SIGTERM)
@@ -381,7 +424,9 @@ class Window(Gtk.Window):
     def blur(self,*args):
         if not self.preview and time.monotonic()-self.started>2:self.dismiss()
         return False
-    def shutdown(self):Gtk.main_quit();return False
+    def shutdown(self):
+        if self.camera_viewer:self.camera_viewer.close();self.camera_viewer=None
+        Gtk.main_quit();return False
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--preview',action='store_true');p.add_argument('--snapshot',type=Path);p.add_argument('--demo',action='store_true',help='Offline simulated display');args=p.parse_args()

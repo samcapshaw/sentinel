@@ -3,9 +3,11 @@ set -euo pipefail
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 app_dir="$HOME/.local/share/sentinel-screensaver"
 mkdir -p "$app_dir" "$HOME/.local/bin"
-for file in display.py sentinel.py live.py orbits.py cameras.json coastlines.json requirements.txt; do
+for file in display.py camera_viewer.py sentinel.py live.py orbits.py cameras.json coastlines.json requirements.txt; do
     install -m 644 "$source_dir/$file" "$app_dir/$file"
 done
+mkdir -p "$app_dir/vendor"
+install -m 644 "$source_dir/vendor/hls.min.js" "$source_dir/vendor/hls.LICENSE" "$source_dir/vendor/Apache-2.0.txt" "$app_dir/vendor/"
 python -m venv --system-site-packages "$app_dir/venv"
 "$app_dir/venv/bin/python" -m pip install -r "$app_dir/requirements.txt"
 cat > "$HOME/.local/bin/sentinel-screensaver" <<'WRAPPER'

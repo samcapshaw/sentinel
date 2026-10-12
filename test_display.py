@@ -13,7 +13,7 @@ class DisplayTests(unittest.TestCase):
             self.assertTrue(any(surface.get_data()))
 
     def test_scene_sequence_and_wrap(self):
-        self.assertEqual([scene_at(t)[0] for t in (0,24,46,70,96,120)],[0,1,2,3,4,4])
+        self.assertEqual([scene_at(t)[0] for t in (0,24,46,112,138,168)],[0,1,2,3,4,0])
         self.assertEqual(scene_at(-1),(0,0,24))
 
     def test_all_scenes_and_crossfades_render(self):
