@@ -13,7 +13,7 @@ gi.require_version('Gtk','3.0')
 from gi.repository import Gtk, Gdk, GLib
 from sentinel import Dashboard, LAND, NODES, palette
 
-SCENES = (("GLOBAL OBSERVATION",54),("NETWORK",22),("CITY CAMERAS",96),("THREAT INTEL",26),("ORBITAL",30),("AVIATION",36),("ROAD CONDITIONS",34),("NATURAL HAZARDS",42),("MEDIA EVENTS",36))
+SCENES = (("GLOBAL OBSERVATION",32),("NETWORK",18),("CITY CAMERAS",54),("THREAT INTEL",24),("ORBITAL",32),("AVIATION",32),("ROAD CONDITIONS",24),("NATURAL HAZARDS",32),("MEDIA EVENTS",28))
 
 def scene_at(t,enabled=None):
     active=[(i,row) for i,row in enumerate(SCENES) if enabled is None or i in enabled] or [(1,SCENES[1])]
@@ -124,17 +124,7 @@ class Display:
             self.media_events(cr,t);return
         if scene in (0,2):
             self.camera_map(cr,t);return
-        if scene==3:
-            self.panel(cr,32,155,1536,787,'04','KNOWN EXPLOITED VULNERABILITIES','CISA / PUBLIC CATALOG')
-            self.text(cr,58,225,data['kev_status'],11,'accent')
-            age=(time.time()-data['kev_updated'])/3600 if data['kev_updated'] else None
-            self.text(cr,58,251,('Cache age %.1f hours'%age) if age is not None else 'Waiting for public source',10,'dark_foreground')
-            for i,item in enumerate(data['kev'][:9]):
-                y=310+i*61
-                self.text(cr,58,y,item['cveID'],12,'cyan');self.text(cr,250,y,(item['vendorProject']+' / '+item['product'])[:110],11)
-                self.text(cr,250,y+22,'Added '+item['dateAdded']+' / '+item['vulnerabilityName'][:135],9,'dark_foreground')
-            self.text(cr,58,915,'Catalog inclusion describes known exploitation globally; it is not a finding about this machine.',10,'dark_foreground')
-            return
+        if scene==3:self.threat_intel(cr,t);return
         self.panel(cr,32,155,950,787,'01','ESTABLISHED CONNECTIONS','ss / SOCKET METADATA / NO PAYLOADS')
         self.text(cr,52,220,'TRANSPORT   LOCAL ENDPOINT                         REMOTE ENDPOINT',10,'dark_foreground')
         for i,(proto,local,remote) in enumerate(data['connections'][:25]):
@@ -148,6 +138,44 @@ class Display:
         self.panel(cr,998,526,570,416,'03','CONNECTION ACTIVITY','OBSERVED CHANGES / LOCAL CLOCK')
         for i,(stamp,message) in enumerate(data['events'][:12]):
             y=594+i*25;self.text(cr,1016,y,stamp,9,'dark_foreground');self.text(cr,1090,y,message[:70],9)
+
+    def activity(self,cr,x,y,w,t,label,period=6):
+        self.text(cr,x,y,label,9,'dark_foreground')
+        self.line(cr,x,y+12,x+w,y+12,alpha=.25,width=2)
+        self.line(cr,x,y+12,x+w*((t%period)/period),y+12,'accent',.8,2)
+
+    def threat_intel(self,cr,t):
+        data=self.current;items=data['kev'];phase=scene_at(t,self.enabled)[1]
+        cycle=sum(SCENES[i][1] for i in self.enabled);index=(int(t//cycle)*5+int(phase/5))%max(1,len(items));selected=items[index] if items else None
+        self.panel(cr,32,155,640,787,'01','EXPLOIT INTELLIGENCE','CISA KEV / CATALOG REVIEW')
+        self.text(cr,58,225,data['kev_status'],10,'accent')
+        self.activity(cr,58,253,588,t,'REVIEWING CATALOG / ENTRY %04d OF %04d'%(index+1,len(items)),5)
+        for i,item in enumerate((items+items)[index:index+min(8,len(items))]):
+            y=312+i*72
+            if i==0:
+                self.color(cr,'accent',.07);cr.rectangle(44,y-23,612,61);cr.fill()
+            self.text(cr,58,y,item['cveID'],12,'cyan' if i==0 else 'foreground')
+            self.text(cr,245,y,(item['vendorProject']+' / '+item['product'])[:48],10,'bright_foreground')
+            self.text(cr,58,y+23,'ADDED '+item['dateAdded']+' / '+item.get('knownRansomwareCampaignUse','Unknown').upper()+' RANSOMWARE USE',8,'dark_foreground')
+        self.panel(cr,688,155,880,490,'02','SELECTED VULNERABILITY','AUTOMATIC / FIVE SECOND REVIEW')
+        if selected:
+            self.text(cr,716,236,selected['cveID'],25,'cyan')
+            self.wrapped(cr,716,278,selected['vulnerabilityName'],width=78,lines=2,size=14,color='bright_foreground',spacing=24)
+            self.wrapped(cr,716,352,selected.get('shortDescription',''),width=105,lines=5,size=11,spacing=22)
+            self.text(cr,716,492,'REQUIRED ACTION / CISA CATALOG',9,'dark_foreground')
+            self.wrapped(cr,716,520,selected.get('requiredAction','See vendor guidance.'),width=105,lines=3,size=11,spacing=22)
+            self.text(cr,716,610,'CISA DUE DATE '+selected.get('dueDate','Unknown'),10,'accent')
+        self.panel(cr,688,661,880,281,'03','CATALOG ACTIVITY','REAL PUBLICATION DATES / NOT LIVE ATTACKS')
+        from collections import Counter
+        dates=sorted(Counter(item['dateAdded'] for item in items).items())[-14:]
+        peak=max((n for _,n in dates),default=1)
+        for i,(date,count) in enumerate(dates):
+            x=716+i*58;h=115*count/peak
+            self.color(cr,'accent',.25+.3*(.5+.5*math.sin(t*1.3-i*.4)));cr.rectangle(x,870-h,30,h);cr.fill()
+            self.text(cr,x,893,date[5:],8,'dark_foreground');self.text(cr,x,860-h,str(count),8,'foreground')
+        age=(time.time()-data['kev_updated'])/3600 if data['kev_updated'] else None
+        self.text(cr,716,923,('CATALOG CACHE %.1fh / '%age if age is not None else 'WAITING FOR CISA / ')+'ANIMATED REVIEW, NOT NEW FINDINGS',9,'dark_foreground')
+        self.text(cr,58,919,'Known exploitation globally / no host scan',9,'dark_foreground')
 
     def camera_map(self,cr,t):
         viewer=getattr(self,'camera_viewer',None);cameras=viewer.cameras if viewer else []
@@ -171,23 +199,34 @@ class Display:
         self.text(cr,700,788,cam['provider'][:95]+' / MUTED',9,'dark_foreground')
         self.text(cr,690,194,'O P T I C A L   O B S E R V A T I O N',11,'bright_foreground')
         self.text(cr,690,220,('LOCAL FOCUS / '+self.settings['location']['name'].upper()+' / '+str(self.settings['radius_km'])+' KM') if self.local else 'WORLD MODE / PUBLIC SOURCES / PRELOADED HANDOFF',9,'dark_foreground')
-        for i,(label,value,color) in enumerate([('CAMERA POSITION',f"{cam['lat']:.4f}° / {cam['lon']:.4f}°",'accent'),('COVERAGE',f"{len(cameras)} SOURCES / {len({c['city'] for c in cameras})} CITIES",'cyan'),('NEXT OBSERVATION',('%02d seconds'%max(0,45-(time.monotonic()-viewer.started))) if viewer else 'WAITING','green')]):
+        for i,(label,value,color) in enumerate([('CAMERA POSITION',f"{cam['lat']:.4f}° / {cam['lon']:.4f}°",'accent'),('COVERAGE',f"{len(cameras)} SOURCES / {len({c['city'] for c in cameras})} CITIES",'cyan'),('NEXT OBSERVATION',('%02d seconds'%max(0,(viewer.dwell() if hasattr(viewer,'dwell') else 18)-(time.monotonic()-viewer.started))) if viewer else 'WAITING','green')]):
             x=690+i*292;self.text(cr,x,859,label,9,'dark_foreground');self.text(cr,x,886,value,12,color)
-        self.text(cr,690,928,'BASEMAP IS STORED AERIAL IMAGERY / CAMERA MEDIA IS LABELED BY TYPE',9,'dark_foreground')
+        self.activity(cr,690,922,830,t,'CAMERA HANDOFF / SNAPSHOTS 8s / VIDEO 18s / PRELOADING NEXT VIEW',8)
 
     def aviation(self,cr,t):
         data=self.world_data;aircraft=data['aircraft'];lat,lon=data['flight_center']
         age=time.time()-data['flight_updated'] if data['flight_updated'] else None
         self.panel(cr,32,155,1000,787,'01','AIRSPACE OBSERVATION',data['flight_region'].upper()+' / '+str(data['flight_radius_nm'])+' NM')
-        markers=[dict(lon=a['lon'],lat=a['lat'],heading=a['heading'],label=a['name'] if i<14 else '',color='cyan') for i,a in enumerate(aircraft)]
-        self.tiles.draw(self,cr,48,211,968,535,lon,lat,7,markers)
+        from world_signals import aircraft_position
+        elapsed=max(0,time.time()-data['flight_updated']) if data['flight_updated'] else 0
+        markers=[]
+        focus=int(t/7)%max(1,len(aircraft))
+        for i,a in enumerate(aircraft):
+            plon,plat=aircraft_position(a,elapsed)
+            markers.append(dict(lon=plon,lat=plat,heading=a['heading'],label=a['name'] if i==focus or i<10 else '',color='green' if i==focus else 'cyan',trail=[(a['lon'],a['lat']),(plon,plat)]))
+        zoom=7
+        if aircraft and int(t/7)%2:
+            lon,lat=aircraft_position(aircraft[focus],elapsed);zoom=10
+        self.tiles.draw(self,cr,48,211,968,535,lon,lat,zoom,markers)
+        self.activity(cr,58,230,930,t,('TRACKING '+aircraft[focus]['name'] if aircraft else 'ACQUIRING CONTACTS')+' / EXTRAPOLATION CAPPED AT 20s',7)
         self.text(cr,58,783,data['flight_status'],10,'accent')
         self.text(cr,58,810,('RECEIVED %.0f SECONDS AGO'%age) if age is not None else 'WAITING FOR PUBLIC AVIATION SOURCE',10,'dark_foreground')
         self.text(cr,58,839,'Reported ADS-B positions / coverage varies / no route or destination inferred',10,'dark_foreground')
         for i,a in enumerate(aircraft[:3]):
             y=875+i*22;self.text(cr,58,y,f"{a['name']:<12} {str(a['altitude']):>7} ft   {str(a['speed']):>6} kt   {a['type']}",11,'foreground')
         self.panel(cr,1048,155,520,787,'02','LIVE CONTACTS',str(len(aircraft))+' REPORTED')
-        for i,a in enumerate(aircraft[:25]):
+        offset=(int(t/7)*12)%max(1,len(aircraft))
+        for i,a in enumerate((aircraft+aircraft)[offset:offset+min(25,len(aircraft))]):
             y=224+i*27;self.text(cr,1068,y,a['name'][:11],11,'bright_foreground');self.text(cr,1195,y,('GROUND' if a['altitude']=='ground' else str(a['altitude'])+' ft' if a['altitude'] is not None else '—'),10,'accent');self.text(cr,1310,y,(str(a['speed'])+' kt' if a['speed'] is not None else '—'),10,'cyan');self.text(cr,1420,y,a['type'][:10],10,'dark_foreground')
         self.text(cr,1068,922,'ADSB.lol / ODbL 1.0 / poll every 20s',9,'dark_foreground')
 
@@ -196,13 +235,17 @@ class Display:
         self.panel(cr,32,155,1000,787,'01','ROAD CONDITIONS',data['road_region'].upper()+' / PUBLISHED REPORTS')
         lat,lon=data['road_center']
         markers=[dict(lon=r['lon'],lat=r['lat'],color='red' if r['severity'].lower() in ('serious','severe','active') else 'yellow') for r in roads]
-        self.tiles.draw(self,cr,48,211,968,610,lon,lat,11 if self.local else 12,markers)
+        zoom=11 if self.local else 12
+        if roads and int(t/6)%2:
+            focused=roads[int(t/6)%len(roads)];lon,lat=focused['lon'],focused['lat'];zoom=14
+        self.tiles.draw(self,cr,48,211,968,610,lon,lat,zoom,markers)
+        self.activity(cr,58,233,930,t,'ROAD OBSERVATION / REGIONAL OVERVIEW + INCIDENT FOCUS',6)
         self.text(cr,58,856,data['road_status'],11,'accent')
         self.text(cr,58,885,f"{len(roads)} published disruptions / "+(('received %.0fs ago'%age) if age is not None else 'waiting for source'),10,'dark_foreground')
         self.text(cr,58,915,'Real incident locations / no simulated vehicle movement or inferred congestion speeds',10,'dark_foreground')
         self.panel(cr,1048,155,520,787,'02','ROAD BULLETIN','FIVE MINUTE REFRESH')
         ordered=sorted(roads,key=lambda r:0 if r['severity'].lower() in ('serious','severe','active') else 1)
-        offset=(int(t/12)*6)%max(1,len(ordered))
+        offset=(int(t/5)*6)%max(1,len(ordered))
         for i,r in enumerate((ordered+ordered)[offset:offset+6]):
             y=225+i*110;self.text(cr,1068,y,r['severity'].upper()+' / '+r['category'],11,'yellow');self.text(cr,1068,y+25,r['location'][:65],9,'bright_foreground');self.text(cr,1068,y+47,r['detail'][:65],9,'foreground');self.text(cr,1068,y+69,r['updated'][:19]+' / '+r.get('source_time_label','SOURCE UPDATE'),8,'dark_foreground')
 
@@ -264,7 +307,7 @@ class Display:
         self.text(cr,1068,435,'EARTHQUAKES / M2.5+ / PAST 7 DAYS',10,'accent')
         self.text(cr,1068,459,(str(self.settings['quake_radius_km'])+' KM RADIUS / ' if loc else 'WORLD / ')+self.source_age(data,'quakes'),9,'dark_foreground')
         if quakes:
-            offset=(int(t/10)*5)%len(quakes)
+            offset=(int(t/5)*5)%len(quakes)
             from datetime import datetime,timezone
             for i,r in enumerate((quakes+quakes)[offset:offset+min(5,len(quakes))]):
                 y=488+i*39;self.text(cr,1068,y,'M%.1f'%r['mag'],12,'yellow');self.text(cr,1120,y,r['title'][:58],9,'foreground')
@@ -283,7 +326,7 @@ class Display:
         self.panel(cr,32,155,1000,787,'01','MEDIA EVENTS','PUBLISHER REPORTS / NOT OFFICIAL ALERTS')
         self.text(cr,58,228,'L O C A L   S I G N A L' if loc else 'W O R L D   S I G N A L',11,'accent')
         if news:
-            index=int(t/12)%len(news);item=news[index]
+            index=int(t/7)%len(news);item=news[index]
             self.wrapped(cr,58,282,item['title'],width=65,lines=4,size=21,color='bright_foreground',spacing=33)
             self.text(cr,58,430,item['source'][:80],12,'cyan');self.text(cr,58,459,item['published'][:70],10,'dark_foreground')
             self.line(cr,58,490,1006,490)
@@ -300,26 +343,44 @@ class Display:
         self.wrapped(cr,1072,891,'News relevance comes from the selected query. Headlines do not confirm hazards or measure social-media popularity.',width=62,lines=3,size=9,color='dark_foreground',spacing=16)
 
     def orbital(self,cr,t):
-        data=self.orbits
-        self.panel(cr,32,155,1100,787,'05','ORBITAL OBSERVATION','SGP4 / ISS + STARLINK / ESTIMATED POSITIONS')
-        self.panel(cr,1148,155,420,787,'06','ORBIT ELEMENTS','PUBLIC / CELESTRAK')
-        target=data['objects'][data.get('selected',0)] if data['objects'] else None
+        data=self.orbits;objects=data['objects'];selected=data.get('selected',0)
+        self.panel(cr,32,155,1100,787,'05','ORBITAL OPERATIONS','CURRENT POSITIONS + TIME-COMPRESSED TRACK PREVIEW')
+        self.panel(cr,1148,155,420,787,'06','LOCAL PASS WATCH' if self.local else 'ORBIT WATCH','TRACKED SUBSET / SGP4')
+        target=objects[selected] if objects else None
         lon,lat=(target['point'][:2] if target else (0,20))
-        markers=[dict(lon=o['point'][0],lat=o['point'][1],active=i==data.get('selected',0),label=o['name']) for i,o in enumerate(data['objects'])]
-        self.orbit_globe.draw(self,cr,580,510,295,lon,lat*.8,t,markers,data['track'])
-        self.text(cr,60,235,'E A R T H   O R B I T   O B S E R V A T I O N',12,'bright_foreground')
-        self.text(cr,60,262,'ISS / STARLINK / PROPAGATED GROUND POSITIONS',10,'dark_foreground')
-        self.text(cr,58,865,data['status'][:135],10,'accent')
-        self.text(cr,58,892,'Ground track: 45 minutes behind / 90 minutes ahead. Selection changes every 30 seconds.',9,'dark_foreground')
-        self.text(cr,58,915,'Positions are calculated from orbital elements; this is not direct satellite telemetry.',10,'dark_foreground')
-        if data['objects']:
-            obj=data['objects'][data.get('selected',0)];lon,lat,alt=obj['point']
-            rows=[('OBJECT',obj['name']),('NORAD ID',str(obj['id'])),('LATITUDE',f'{lat:.3f}°'),('LONGITUDE',f'{lon:.3f}°'),('ALTITUDE',f'{alt:.1f} km'),('ELEMENT EPOCH',obj['epoch']),('DISPLAYED SUBSET',str(len(data['objects']))+' objects')]
-            for i,(label,value) in enumerate(rows):
-                yy=225+i*78;self.text(cr,1170,yy,label,9,'dark_foreground');self.text(cr,1170,yy+25,value[:42],12,'bright_foreground')
-        if data['updated']:
-            self.text(cr,1170,840,'CACHE AGE',9,'dark_foreground');self.text(cr,1170,865,f"{(time.time()-data['updated'])/3600:.1f} hours",12,'accent')
-            self.text(cr,1170,900,'Elements refresh every six hours',9,'dark_foreground')
+        track=data['track'];preview_index=int(t*4)%max(1,len(track));forecast=track[preview_index] if track else None
+        markers=[dict(lon=o['point'][0],lat=o['point'][1],active=i==selected,label=o['name']) for i,o in enumerate(objects)]
+        loc=self.settings.get('location') if self.local else None
+        if loc:markers.append(dict(lon=loc['lon'],lat=loc['lat'],active=True,label='LOCAL OBSERVER'))
+        if forecast:markers.append(dict(lon=forecast[0],lat=forecast[1],active=True,color='magenta',label='TRACK PREVIEW %+d MIN'%(preview_index-45)))
+        focus_lon,focus_lat=(forecast[:2] if forecast else (lon,lat))
+        self.orbit_globe.draw(self,cr,580,505,250,focus_lon,focus_lat*.8,t,markers,track)
+        self.text(cr,60,233,'S A T E L L I T E   P A S S   W A T C H',13,'bright_foreground')
+        self.text(cr,60,260,'ISS + STARLINK / ESTIMATED GROUND POSITIONS / SELECTION EVERY 8s',9,'dark_foreground')
+        self.activity(cr,58,795,1040,t,'TRACK PLAYBACK %+d MIN / TIME-COMPRESSED TRAJECTORY / CURRENT DOTS REMAIN REAL TIME'%(preview_index-45),len(track)/4 if track else 30)
+        self.text(cr,58,840,data['status'][:135],9,'accent')
+        if target:
+            look=target.get('look',{})
+            self.text(cr,1170,229,target['name'][:32],15,'bright_foreground')
+            self.text(cr,1170,257,'NORAD '+str(target['id'])+' / %.0f km ALT'%target['point'][2],10,'cyan')
+            if look:
+                self.text(cr,1170,298,'LOCAL ELEVATION / AZIMUTH',9,'dark_foreground')
+                self.text(cr,1170,325,'%.1f° / %.0f°'%(look['elevation'],look['azimuth']),22,'green' if look['elevation']>=10 else 'accent')
+                self.text(cr,1170,354,'%.0f km slant range / '%look['range']+('ABOVE 10°' if look['elevation']>=10 else 'BELOW 10°'),9,'dark_foreground')
+            else:self.text(cr,1170,306,'Set a location for local pass estimates',9,'dark_foreground')
+            self.text(cr,58,876,'Element epoch '+target['epoch'][:26]+' / '+str(len(objects))+' TRACKED OBJECTS',9,'dark_foreground')
+        passes=[p for p in data.get('passes',[]) if p.get('end') is None or p['end']>=time.time()]
+        self.line(cr,1170,382,1546,382);self.text(cr,1170,410,'NEXT 90 MIN / PASSES ABOVE 10°',10,'accent')
+        from datetime import datetime,timezone
+        for i,item in enumerate(passes[:7]):
+            y=445+i*55;eta=max(0,(item['start']-time.time())/60)
+            self.text(cr,1170,y,item['name'][:30],11,'bright_foreground')
+            self.text(cr,1170,y+20,('NOW' if eta==0 else '+%.0f min'%eta)+' / peak %.0f°'%item['peak']+' / '+datetime.fromtimestamp(item['start'],timezone.utc).strftime('%H:%M UTC'),9,'cyan')
+        if not passes:self.wrapped(cr,1170,449,'No predicted passes above 10° in the next 90 minutes for this tracked subset.' if self.local and data.get('pass_updated') else 'Pass prediction needs a selected location and loaded orbital elements.',width=48,lines=4,size=10)
+        if data['updated']:self.text(cr,1170,867,'ELEMENT CACHE %.1fh'%((time.time()-data['updated'])/3600),9,'dark_foreground')
+        self.wrapped(cr,1170,895,'Geometric horizon estimate. Daylight, clouds and Earth shadow affect optical visibility.',width=48,lines=3,size=9,color='dark_foreground',spacing=15)
+        self.text(cr,58,916,'Tracks are calculated from orbital elements / no direct radio telemetry / not Starlink service coverage.',9,'dark_foreground')
+
 
     def overview(self,cr,t):
         y=155;h=438;left=950;right=570;rx=998

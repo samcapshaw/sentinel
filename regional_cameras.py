@@ -1,4 +1,4 @@
-"""Refresh only nearby public Caltrans catalogs; no media is downloaded in bulk."""
+"""Refresh only nearby public Caltrans catalogs; bounded JPEG checks exclude unavailable feeds."""
 import hashlib
 import json
 from pathlib import Path
@@ -6,6 +6,7 @@ import threading
 import time
 from preferences import california_districts,local_cameras
 from world_signals import request_json
+from camera_health import healthy_catalog
 
 
 def parse_caltrans(payload):
@@ -25,7 +26,7 @@ def parse_caltrans(payload):
 class RegionalCameras:
     def __init__(self,settings):
         self.settings=settings;self.result=None;self.status='';self.lock=threading.Lock()
-        key=hashlib.sha256(json.dumps(['v2',settings.get('location'),settings['radius_km']],sort_keys=True).encode()).hexdigest()[:16]
+        key=hashlib.sha256(json.dumps(['v6',settings.get('location'),settings['radius_km']],sort_keys=True).encode()).hexdigest()[:16]
         self.path=Path.home()/'.cache/sentinel/cameras'/f'{key}.json'
         self.districts=california_districts(settings)
         if self.districts:threading.Thread(target=self.refresh,daemon=True).start()
@@ -38,7 +39,8 @@ class RegionalCameras:
                 for district in self.districts:
                     try:all_rows.extend(parse_caltrans(request_json(f'https://cwwp2.dot.ca.gov/data/d{district}/cctv/cctvStatusD{district:02}.json')))
                     except Exception:continue
-                result=local_cameras(all_rows,self.settings)
+                candidates=local_cameras(all_rows,self.settings,limit=64)
+                result=local_cameras(healthy_catalog(candidates),self.settings)
                 if not result:raise ValueError('No nearby Caltrans cameras available')
                 self.path.parent.mkdir(parents=True,exist_ok=True);temp=self.path.with_suffix('.tmp');temp.write_text(json.dumps(result));temp.replace(self.path)
             with self.lock:self.result=result;self.status='Caltrans / nearby cameras'

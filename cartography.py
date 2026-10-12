@@ -57,10 +57,11 @@ class Globe:
             px,py,z=project((item['lon'],item['lat']))
             if z<0:continue
             active=item.get('active',False)
-            display.dot(cr,px,py,3.6 if active else 1.7,'green' if active else 'accent',.4+.6*z)
+            marker_color=item.get('color','green' if active else 'accent')
+            display.dot(cr,px,py,3.6 if active else 1.7,marker_color,.4+.6*z)
             if active:
-                display.color(cr,'green',.5);cr.set_line_width(.8);cr.arc(px,py,9+math.sin(t*2)*2,0,math.tau);cr.stroke()
-                display.text(cr,px+13,py-10,item.get('label','')[:25],9,'green')
+                display.color(cr,marker_color,.5);cr.set_line_width(.8);cr.arc(px,py,9+math.sin(t*2)*2,0,math.tau);cr.stroke()
+                display.text(cr,px+13,py-10,item.get('label','')[:25],9,marker_color)
         display.line(cr,cx-radius-15,cy,cx-radius-5,cy,'accent',.5)
         display.line(cr,cx+radius+5,cy,cx+radius+15,cy,'accent',.5)
 
@@ -116,7 +117,14 @@ class Tiles:
         for marker in markers:
             px,py=mercator(marker['lon'],marker['lat'],zoom);px=x+px-left;py=y+py-top
             if not x<=px<=x+w or not y<=py<=y+h:continue
-            color=marker.get('color','accent');display.dot(cr,px,py,3,color)
+            color=marker.get('color','accent')
+            trail=marker.get('trail',[])
+            previous=None
+            for trail_lon,trail_lat in trail:
+                tx,ty=mercator(trail_lon,trail_lat,zoom);tx=x+tx-left;ty=y+ty-top
+                if previous:display.line(cr,*previous,tx,ty,color,.45,.8)
+                previous=(tx,ty)
+            display.dot(cr,px,py,3,color)
             heading=marker.get('heading')
             if isinstance(heading,(int,float)):
                 cr.save();cr.translate(px,py);cr.rotate(math.radians(heading));display.color(cr,color,.9);cr.move_to(0,-8);cr.line_to(4,5);cr.line_to(0,2);cr.line_to(-4,5);cr.close_path();cr.fill();cr.restore()

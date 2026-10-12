@@ -26,6 +26,16 @@ class LocationTests(unittest.TestCase):
         cameras=[{'lat':34.,'lon':-118.},{'lat':51.5,'lon':-.1}]
         self.assertEqual(len(local_cameras(cameras,DEFAULTS)),2)
         self.assertEqual(local_cameras(cameras,local_settings()),cameras[:1])
+    def test_camera_candidates_reach_beyond_dead_nearest_interchanges(self):
+        cameras=[{'lat':34+i*.001,'lon':-118.,'route':route,'city':'Test','view':str(i)} for i in range(8) for route in ('I-405','SR-55','SR-91','I-5','SR-22','SR-73','SR-57','SR-1')]
+        candidates=local_cameras(cameras,local_settings(),limit=64)
+        self.assertEqual(len(candidates),64)
+        self.assertEqual([row['route'] for row in candidates[:3]],['I-405','SR-55','SR-91'])
+        self.assertTrue(any(row['route']=='I-405' and row['view']=='5' for row in candidates))
+        healthy=[row for row in candidates if row['route']!='I-405' or int(row['view'])>=5]
+        selected=local_cameras(healthy,local_settings())
+        self.assertEqual(selected[0]['route'],'I-405')
+        self.assertEqual(len(selected),32)
     def test_geocoding_exposes_ambiguous_results_for_selection(self):
         payload={'results':[{'name':'Paris','latitude':48.8,'longitude':2.3,'country_code':'FR'},{'name':'Paris','latitude':33.6,'longitude':-95.5,'country_code':'US'}]}
         with patch('preferences.request_json',return_value=payload):
@@ -40,7 +50,7 @@ class LocationTests(unittest.TestCase):
         display=Display(settings=settings)
         self.assertNotIn(0,display.enabled);self.assertNotIn(7,display.enabled)
         self.assertEqual(scene_at(0,display.enabled)[0],1)
-        self.assertEqual(scene_at(22,display.enabled)[0],3)
+        self.assertEqual(scene_at(18,display.enabled)[0],3)
 
 class RegionalFeedTests(unittest.TestCase):
     def test_quake_radius_filter_and_original_timestamp(self):
@@ -72,7 +82,9 @@ class LocalRenderingTests(unittest.TestCase):
         display.regional.data['weather']={'current':{'time':'2026-10-12T09:00','temperature_2m':20,'wind_speed_10m':5,'precipitation':0},'current_units':{'temperature_2m':'°C','wind_speed_10m':'km/h','precipitation':'mm'},'daily':{'time':['2026-10-12'],'temperature_2m_min':[10],'temperature_2m_max':[20],'precipitation_probability_max':[5]}}
         display.regional.data['news']=[{'title':'Example headline','source':'Example publisher','published':'Today','url':'https://example.com','detail':''}]
         display.tiles=SimpleNamespace(draw=lambda *args,**kwargs:None)
-        for t in (17,60,90,180,210,245,280,312,350):
+        from display import SCENES
+        from itertools import accumulate
+        for t in [duration/2+start for (_,duration),start in zip(SCENES,[0,*accumulate(duration for _,duration in SCENES)])]:
             surface=cairo.ImageSurface(cairo.FORMAT_ARGB32,1600,1000)
             display.paint(cairo.Context(surface),1600,1000,t)
             self.assertTrue(any(surface.get_data()))

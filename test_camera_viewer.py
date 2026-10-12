@@ -70,3 +70,18 @@ class CameraTests(unittest.TestCase):
         clock.return_value=110;v.update(True)
         self.assertIsNone(v.current)
         v.slots[0]['web'].set_opacity.assert_called_with(0)
+
+    @patch('camera_viewer.time.monotonic')
+    def test_hls_timeout_falls_back_to_snapshot_after_six_seconds(self,clock):
+        v=self.viewer();v.cameras[0]={'kind':'hls','media_url':'https://example.org/live.m3u8','fallback_url':'https://example.org/frame.jpg'}
+        clock.return_value=100;v.update(True)
+        clock.return_value=107;v.update(True)
+        self.assertEqual(v.cameras[0]['kind'],'image');self.assertIsNone(v.pending)
+        v.update(True);self.assertEqual(v.slots[v.pending]['index'],0)
+
+    @patch('camera_viewer.time.monotonic')
+    def test_stalled_current_video_is_not_left_visible_indefinitely(self,clock):
+        clock.return_value=100;v=self.viewer();v.update(True);self.playing(v,0)
+        clock.return_value=104;v.update(True);v.slots[0]['buffering_at']=105
+        clock.return_value=111;v.update(True)
+        self.assertIsNone(v.current);self.assertGreater(v.failures[0],111)

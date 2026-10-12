@@ -23,3 +23,20 @@ class OrbitTests(unittest.TestCase):
         lon,lat,alt=position(Satellite(),946728000)
         self.assertAlmostEqual(lat,0)
         self.assertAlmostEqual(alt,621.863,places=3)
+
+class PassTests(unittest.TestCase):
+    def test_look_angles_overhead_and_far_side(self):
+        from orbits import look_angles
+        observer={'lat':0,'lon':0}
+        overhead=look_angles((0,0,500),observer)
+        self.assertAlmostEqual(overhead['elevation'],90)
+        self.assertAlmostEqual(overhead['range'],500)
+        self.assertLess(look_angles((180,0,500),observer)['elevation'],0)
+    def test_pass_prediction_uses_geometric_threshold_and_source_times(self):
+        from unittest.mock import patch
+        from orbits import next_pass
+        with patch('orbits.position',side_effect=[(90,0,500),(0,0,500),(90,0,500)]):
+            predicted=next_pass(None,{'lat':0,'lon':0},1000,minutes=1)
+        self.assertEqual(predicted['start'],1030)
+        self.assertEqual(predicted['end'],1060)
+        self.assertAlmostEqual(predicted['peak'],90)

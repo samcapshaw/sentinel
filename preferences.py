@@ -83,19 +83,17 @@ def runtime_settings():
         except (OSError,ValueError,KeyError):pass # Saved approximate location remains usable.
     return settings
 
-def local_cameras(cameras,settings):
+def local_cameras(cameras,settings,limit=32):
     if not is_local(settings):return list(cameras)
     loc=settings['location'];near=sorted(cameras,key=lambda c:distance_km(loc['lat'],loc['lon'],c['lat'],c['lon']))
     near=[c for c in near if distance_km(loc['lat'],loc['lon'],c['lat'],c['lon'])<=settings['radius_km']]
-    selected=[];counts={}
-    for camera in near:
-        route=camera.get('route')
-        if route and counts.get(route,0)>=8:continue
-        selected.append(camera)
-        if route:counts[route]=counts.get(route,0)+1
-        if len(selected)==32:break
-    if len(selected)<32:selected.extend(c for c in near if c not in selected)
-    return selected[:32]
+    if not any(c.get('route') for c in near):return near[:limit]
+    bins={}
+    for camera in near:bins.setdefault(camera.get('route') or camera['city'],[]).append(camera)
+    # Interleave corridors rather than filling the rotation with one interchange.
+    priority=[route for route in ('I-405','SR-55','SR-91') if route in bins]
+    order=(priority+[route for route in bins if route not in priority])[:8]
+    return [bins[route][i] for i in range(8) for route in order if i<len(bins[route])][:limit]
 
 # District centers choose nearby California feeds without probing every district.
 DISTRICTS={1:(40.8,-124.1),2:(40.6,-122.4),3:(38.6,-121.5),4:(37.8,-122.3),5:(35.3,-120.7),6:(36.7,-119.8),7:(34.05,-118.24),8:(34.1,-117.3),9:(37.4,-118.4),10:(37.95,-121.3),11:(32.72,-117.16),12:(33.72,-117.9)}

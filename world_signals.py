@@ -32,6 +32,17 @@ def normalize_aircraft(payload):
     return rows[:250]
 
 
+def aircraft_position(aircraft,elapsed):
+    """Short presentation estimate from reported heading/speed; never past 20s."""
+    speed=finite_number(aircraft.get('speed'));heading=finite_number(aircraft.get('heading'))
+    if speed is None or heading is None or speed<0:return aircraft['lon'],aircraft['lat']
+    seconds=min(20,max(0,elapsed+aircraft.get('seen',0)));angle=speed*1.852*seconds/3600/6371
+    lat,lon=map(math.radians,(aircraft['lat'],aircraft['lon']));bearing=math.radians(heading)
+    new_lat=math.asin(max(-1,min(1,math.sin(lat)*math.cos(angle)+math.cos(lat)*math.sin(angle)*math.cos(bearing))))
+    new_lon=lon+math.atan2(math.sin(bearing)*math.sin(angle)*math.cos(lat),math.cos(angle)-math.sin(lat)*math.sin(new_lat))
+    return (math.degrees(new_lon)+180)%360-180,math.degrees(new_lat)
+
+
 def normalize_roads(payload):
     rows=[]
     for item in payload:

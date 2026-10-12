@@ -17,3 +17,12 @@ class WorldTests(unittest.TestCase):
         rows=normalize_roads([good,dict(good,point='[0,100]'),dict(good,point='invalid'),{}])
         self.assertEqual(len(rows),1)
         self.assertEqual(rows[0]['updated'],good['currentUpdateDateTime'])
+
+class AircraftMotionTests(unittest.TestCase):
+    def test_motion_is_capped_and_does_not_move_without_heading(self):
+        from world_signals import aircraft_position
+        aircraft={'lat':34,'lon':-118,'speed':400,'heading':90,'seen':0}
+        self.assertEqual(aircraft_position(aircraft,20),aircraft_position(aircraft,999))
+        self.assertGreater(aircraft_position(aircraft,10)[0],-118)
+        aircraft['heading']=None
+        self.assertEqual(aircraft_position(aircraft,10),(-118,34))

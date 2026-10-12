@@ -1,6 +1,6 @@
 import unittest
 import cairo
-from display import Display, scene_at
+from display import Display, scene_at, SCENES
 
 class DisplayTests(unittest.TestCase):
     def test_render_at_hidpi_and_preview_sizes(self):
@@ -13,13 +13,18 @@ class DisplayTests(unittest.TestCase):
             self.assertTrue(any(surface.get_data()))
 
     def test_scene_sequence_and_wrap(self):
-        self.assertEqual([scene_at(t)[0] for t in (0,54,76,172,198,228,264,298,340,376)],[0,1,2,3,4,5,6,7,8,0])
-        self.assertEqual(scene_at(-1),(0,0,54))
+        from itertools import accumulate
+        boundaries=[0,*accumulate(duration for _,duration in SCENES)]
+        self.assertEqual([scene_at(t)[0] for t in boundaries],list(range(len(SCENES)))+[0])
+        self.assertEqual(scene_at(-1),(0,0,SCENES[0][1]))
 
     def test_all_scenes_and_crossfades_render(self):
         display=Display()
         frames=[]
-        for t in (0,12,53.3,54,75.3,76,171.3,172,197.3,198,227.3,228,263.3,264,297.3,298,339.3,340,375.3,376):
+        from itertools import accumulate
+        times=[0,12]
+        for boundary in accumulate(duration for _,duration in SCENES):times.extend((boundary-.7,boundary))
+        for t in times:
             surface=cairo.ImageSurface(cairo.FORMAT_ARGB32,1600,1000)
             display.paint(cairo.Context(surface),1600,1000,t)
             frames.append(bytes(surface.get_data()))

@@ -14,8 +14,9 @@ gi.require_version('Gtk','3.0')
 gi.require_version('WebKit2','4.1')
 from gi.repository import Gtk, WebKit2
 
-DWELL = 45
-START_TIMEOUT = 25
+DWELL = 18
+IMAGE_DWELL = 8
+START_TIMEOUT = 12
 SETTLE_TIME = 3
 PRELOAD_LEAD = 10
 
@@ -60,6 +61,8 @@ onError:e=>report('error '+e.data)}})}
 class CameraViewer:
     def __init__(self, overlay, canvas, dismiss, cameras=None):
         self.cameras=[c for c in (cameras if cameras is not None else json.loads((Path(__file__).parent/'cameras.json').read_text())) if c.get('video_id') or c.get('media_url')]
+        from camera_health import FrameHealth
+        self.health=FrameHealth()
         self.index=-1;self.cursor=-1;self.active=False;self.started=0;self.status='CONNECTING';self.failures={};self.played=False;self.last_error=''
         self.current=None;self.pending=None;self.generation=0;self.canvas=canvas
         self.fixed=Gtk.Fixed();self.fixed.set_hexpand(True);self.fixed.set_vexpand(True)
@@ -117,9 +120,10 @@ class CameraViewer:
         except (ValueError,KeyError,IndexError):return
         if value=='playing':
             if slot['playing_at'] is None:slot['playing_at']=time.monotonic()
+            slot['buffering_at']=None
             if number==self.current:self.status=self.live_label()
         elif value=='buffering':
-            slot['playing_at']=None
+            slot['playing_at']=None;slot['buffering_at']=time.monotonic()
             if number==self.current:self.status='BUFFERING'
         else:self.failed(number,value)
 
@@ -153,14 +157,20 @@ class CameraViewer:
         for offset in range(1,len(self.cameras)+1):
             candidate=(self.cursor+offset)%len(self.cameras)
             if self.failures.get(candidate,0)>now:continue
+            health=self.health.check(self.cameras[candidate]) if hasattr(self,'health') else True
+            if health is False:self.failures[candidate]=now+120;continue
+            if health is None:continue
             number=0 if self.current!=0 else 1;slot=self.slots[number]
             self.cursor=candidate;self.pending=number;self.generation+=1
-            slot.update(index=candidate,generation=self.generation,started=now,playing_at=None)
+            slot.update(index=candidate,generation=self.generation,started=now,playing_at=None,buffering_at=None)
             if self.current is None:self.index=candidate;self.status='CONNECTING';self.started=now
             slot['web'].set_opacity(0);slot['web'].show()
             slot['web'].load_uri('http://127.0.0.1:%d/player?camera=%d&generation=%d'%(self.server.server_port,candidate,self.generation))
             return
-        if self.current is None:self.status='FEEDS UNAVAILABLE / RETRYING LATER'
+        if self.current is None:self.status='CHECKING NEARBY FEEDS / SKIPPING OFFLINE CAMERAS'
+
+    def dwell(self):
+        return IMAGE_DWELL if self.current is not None and self.cameras[self.index].get('kind')=='image' else DWELL
 
     def update(self,visible):
         if visible and not self.active:self.active=True
@@ -169,15 +179,21 @@ class CameraViewer:
             for slot in self.slots:slot['web'].set_opacity(0);slot['web'].load_uri('about:blank');slot['web'].hide()
         if not self.active:return
         now=time.monotonic()
+        if self.current is not None:
+            stalled=self.slots[self.current].get('buffering_at')
+            if stalled is not None and now-stalled>5:self.failed(self.current,'playback stalled')
         width=self.canvas.get_allocated_width();height=self.canvas.get_allocated_height();scale=min(width/1600,height/1000)
         x=(width-1600*scale)/2+690*scale;y=(height-1000*scale)/2+288*scale
         for slot in self.slots:
             self.fixed.move(slot['web'],round(x),round(y));slot['web'].set_size_request(max(1,round(830*scale)),max(1,round(467*scale)))
-        if self.pending is None and (self.current is None or now-self.started>=DWELL-PRELOAD_LEAD):self.next()
+        if self.pending is None and (self.current is None or now-self.started>=max(0,self.dwell()-PRELOAD_LEAD)):self.next()
         if self.pending is not None:
             number=self.pending;slot=self.slots[number]
-            if slot['playing_at'] is None and now-slot['started']>START_TIMEOUT:self.failed(number)
-            elif slot['playing_at'] is not None and now-slot['playing_at']>=SETTLE_TIME and (self.current is None or now-self.started>=DWELL):
+            kind=self.cameras[slot['index']].get('kind')
+            timeout=4 if kind=='image' else 6 if kind=='hls' else START_TIMEOUT
+            settle=.3 if kind=='image' else 1 if kind in ('hls','clip') else SETTLE_TIME
+            if slot['playing_at'] is None and now-slot['started']>timeout:self.failed(number)
+            elif slot['playing_at'] is not None and now-slot['playing_at']>=settle and (self.current is None or now-self.started>=self.dwell()):
                 outgoing=self.current
                 self.current=number;self.pending=None;self.index=slot['index'];self.started=now;self.played=True;self.status=self.live_label()
                 slot['web'].set_opacity(1)
@@ -189,6 +205,7 @@ class CameraViewer:
         for slot in self.slots:slot['generation']=-1
 
     def close(self):
+        if hasattr(self,'health'):self.health.close()
         self.active=False
         for slot in self.slots:slot['web'].stop_loading();slot['web'].load_uri('about:blank')
         self.server.shutdown();self.server.server_close()
