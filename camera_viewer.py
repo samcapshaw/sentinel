@@ -1,5 +1,9 @@
 """Muted, preloaded public embeds in an ephemeral WebKit context."""
 import json
+import os
+# Avoid Mesa/GStreamer GL teardown crashes in ambient video windows.
+# This affects Sentinel video surfaces only, and an explicit user override wins.
+os.environ.setdefault("WEBKIT_GST_DISABLE_GL_SINK", "1")
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import threading
