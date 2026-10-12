@@ -13,13 +13,13 @@ class DisplayTests(unittest.TestCase):
             self.assertTrue(any(surface.get_data()))
 
     def test_scene_sequence_and_wrap(self):
-        self.assertEqual([scene_at(t)[0] for t in (0,24,46,112,138,168)],[0,1,2,3,4,0])
-        self.assertEqual(scene_at(-1),(0,0,24))
+        self.assertEqual([scene_at(t)[0] for t in (0,54,76,172,198,228,264,298)],[0,1,2,3,4,5,6,0])
+        self.assertEqual(scene_at(-1),(0,0,54))
 
     def test_all_scenes_and_crossfades_render(self):
         display=Display()
         frames=[]
-        for t in (0,12,23.3,24,35,45.3,46,69.3,70,77,89,95.3,96):
+        for t in (0,12,53.3,54,75.3,76,171.3,172,197.3,198,227.3,228,263.3,264,297.3,298):
             surface=cairo.ImageSurface(cairo.FORMAT_ARGB32,1600,1000)
             display.paint(cairo.Context(surface),1600,1000,t)
             frames.append(bytes(surface.get_data()))

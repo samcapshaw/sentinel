@@ -13,7 +13,7 @@ gi.require_version('Gtk','3.0')
 from gi.repository import Gtk, Gdk, GLib
 from sentinel import Dashboard, LAND, NODES, palette
 
-SCENES = (("OVERVIEW",24),("TRAFFIC ANALYSIS",22),("CITY OBSERVATION",66),("THREAT INTELLIGENCE",26),("ORBITAL TRACKING",30))
+SCENES = (("GLOBAL OBSERVATION",54),("NETWORK",22),("CITY CAMERAS",96),("THREAT INTEL",26),("ORBITAL",30),("AVIATION",36),("ROAD CONDITIONS",34))
 
 def scene_at(t):
     moment=max(0,t)%sum(duration for _,duration in SCENES)
@@ -29,6 +29,12 @@ class Display:
             from live import Telemetry
             from orbits import Tracker
             self.telemetry=Telemetry();self.tracker=Tracker()
+        from cartography import Globe
+        self.globe=Globe();self.orbit_globe=Globe()
+        if live:
+            from cartography import Tiles
+            from world_signals import WorldSignals
+            self.tiles=Tiles();self.signals=WorldSignals()
         self.colors=palette();self.model=Dashboard();self.start=time.monotonic();self.tick=-1
     def color(self,cr,key,alpha=1):
         h=self.colors[key].lstrip('#');cr.set_source_rgba(*(int(h[i:i+2],16)/255 for i in (0,2,4)),alpha)
@@ -57,7 +63,7 @@ class Display:
         self.line(cr,32,61,1568,61)
         metrics=[('SENSOR MESH','07','EDGES ONLINE','accent'),('ACTIVE FLOWS',str(248+int(17*math.sin(t/4))),'CORRELATED SESSIONS','foreground'),('INGEST RATE',f'{1.28+.08*math.sin(t/6):.2f}','Gb/s  /  SYNTHETIC','cyan'),('EXPOSURE SCORE','18','LOW  /  BASELINE NORMAL','green')]
         if self.live:
-            self.current=self.telemetry.snapshot();self.orbits=self.tracker.snapshot()
+            self.current=self.telemetry.snapshot();self.orbits=self.tracker.snapshot();self.world_data=self.signals.snapshot()
             data=self.current
             metrics=[('NETWORK INTERFACES',str(len(data['interfaces'])),'LOCAL / READ ONLY','accent'),('CONNECTIONS',str(len(data['connections'])),'ESTABLISHED TCP + UDP','foreground'),('NETWORK RATE',f"{data['bps']/1e6:.2f}",'Mb/s / INTERFACE COUNTERS','cyan'),('MEMORY USED',f"{data['memory']:.0f}%",'LOAD '+str(round(data['load'],2)),'green')]
         for i,(label,value,note,col) in enumerate(metrics):
@@ -75,7 +81,7 @@ class Display:
             cr.push_group();self.workspace(cr,(scene+1)%len(SCENES),t,0);incoming=cr.pop_group()
             cr.set_source(incoming);cr.paint_with_alpha(blend)
         for i,(label,_) in enumerate(SCENES):
-            x=350+i*240
+            x=32+i*222
             self.text(cr,x,959,label,8,'accent' if i==scene else 'dark_foreground')
             self.line(cr,x,965,x+160,965,alpha=.35)
             if i==scene:self.line(cr,x,965,x+160*(phase/duration),965,'accent',.8,1)
@@ -85,7 +91,7 @@ class Display:
     def workspace(self,cr,scene,t,phase):
         if self.live:
             self.live_workspace(cr,scene,t,phase);return
-        if scene==4:
+        if scene>=4:
             self.panel(cr,32,155,1536,787,"05","ORBITAL TRACKING","DEMO / NETWORK DISABLED")
             self.text(cr,62,245,"Use live mode to load public ISS and Starlink orbit data.",14);return
         if scene==0:self.overview(cr,t)
@@ -98,6 +104,10 @@ class Display:
         data=self.current
         if scene==4:
             self.orbital(cr,t);return
+        if scene==5:
+            self.aviation(cr,t);return
+        if scene==6:
+            self.road_conditions(cr,t);return
         if scene in (0,2):
             self.camera_map(cr,t);return
         if scene==3:
@@ -126,75 +136,70 @@ class Display:
             y=594+i*25;self.text(cr,1016,y,stamp,9,'dark_foreground');self.text(cr,1090,y,message[:70],9)
 
     def camera_map(self,cr,t):
-        viewer=getattr(self,'camera_viewer',None)
-        cameras=viewer.cameras if viewer else []
+        viewer=getattr(self,'camera_viewer',None);cameras=viewer.cameras if viewer else []
         selected=viewer.index if viewer and viewer.index>=0 else 0
-        self.panel(cr,32,155,1536,787,'01','GLOBAL CITY OBSERVATION','PUBLIC CAMERAS / MUTED / AUTOMATIC ROTATION')
-        scale=1.65;ox=60;oy=340
-        def project(lon,lat):return ox+(lon+180)*scale,oy+(90-lat)*scale
-        for lon in range(-180,181,30):self.line(cr,*project(lon,90),*project(lon,-90),alpha=.2)
-        for lat in range(-90,91,30):self.line(cr,*project(-180,lat),*project(180,lat),alpha=.2)
-        for shape in LAND:
-            previous=None
-            for lon,lat in shape:
-                pixel=project(lon,lat)
-                if previous and abs(pixel[0]-previous[0])<700:self.line(cr,*previous,*pixel,'foreground',.4,.65)
-                previous=pixel
-        marked=set()
-        for i,cam in enumerate(cameras):
-            if i!=selected and cam["city"] in marked:continue
-            marked.add(cam["city"])
-            px,py=project(cam['lon'],cam['lat']);active=i==selected
-            self.dot(cr,px,py,4 if active else 2,'green' if active else 'accent')
-            if active:self.text(cr,px+9,py-9,cam['city'].upper(),10,'green')
-            if active:
-                self.color(cr,'green',.35);cr.arc(px,py,10+3*math.sin(t*2),0,math.tau);cr.stroke()
-                self.line(cr,px,py,680,270,'green',.4)
-        self.color(cr,'background',.98);cr.rectangle(680,236,850,578);cr.fill()
-        cam=cameras[selected] if cameras else {'city':'CAMERA','view':'Viewer loading','provider':''}
-        status=viewer.status if viewer else 'CONNECTING'
+        cam=cameras[selected] if cameras else {'city':'WORLD','view':'Acquiring public observations','provider':'','lon':0,'lat':20}
+        status=viewer.status if viewer else 'WAITING FOR VIEWER'
+        self.panel(cr,32,155,632,787,'01','GEOSPATIAL OBSERVATION','ORTHOGRAPHIC / WGS84')
+        self.text(cr,58,237,cam['city'].upper(),24,'bright_foreground')
+        self.text(cr,58,266,cam['view'][:65],10,'accent')
+        markers=[];marked=set()
+        for i,item in enumerate(cameras):
+            if i!=selected and item['city'] in marked:continue
+            marked.add(item['city']);markers.append(dict(lon=item['lon'],lat=item['lat'],active=i==selected,label=item['city']))
+        self.globe.draw(self,cr,348,493,211,cam['lon'],cam['lat']*.8,t,markers)
+        self.text(cr,58,739,'GROUND CONTEXT / AERIAL IMAGERY',9,'dark_foreground')
+        self.tiles.draw(self,cr,58,755,580,157,cam['lon'],cam['lat'],14,[dict(lon=cam['lon'],lat=cam['lat'],color='green')])
+        # An independent video surface overlays this frame only after playback settles.
         self.panel(cr,680,236,850,578,'↗',cam['city'].upper()+' / '+cam['view'][:42].upper(),status)
-        self.text(cr,710,520,status,14,'accent')
-        self.text(cr,60,253,cam['city'].upper(),24,'bright_foreground')
-        self.text(cr,60,283,cam['view'][:65],12,'accent')
-        self.text(cr,60,820,f"{len(cameras)} CAMERA SOURCES / {len({c['city'] for c in cameras})} CITIES",10,'accent')
-        if cameras:
-            self.text(cr,60,718,'CAMERA LOCATION / WGS84',9,'dark_foreground')
-            self.text(cr,60,749,f"{cam['lat']:.4f}° LAT   {cam['lon']:.4f}° LON",13,'foreground')
-            self.text(cr,60,784,'OBSERVATION WINDOW / 45 SECONDS',10,'dark_foreground')
-        self.text(cr,700,788,cam['provider']+' / PUBLIC EMBED / AUDIO MUTED',10,'dark_foreground')
-        if viewer:
-            from camera_viewer import DWELL
-            remaining=max(0,DWELL-(time.monotonic()-viewer.started))
-            self.text(cr,1310,788,'NEXT CITY %02ds'%remaining,9,'accent')
-        self.text(cr,58,912,'AUTOMATIC OBSERVATION / CITY LOCATIONS / PROVIDER VIDEO RETAINS ITS ORIGINAL BRANDING',10,'dark_foreground')
+        self.text(cr,710,520,'ACQUIRING OBSERVATION…',14,'accent')
+        self.text(cr,700,788,cam['provider'][:95]+' / MUTED',9,'dark_foreground')
+        self.text(cr,690,194,'O P T I C A L   O B S E R V A T I O N',11,'bright_foreground')
+        self.text(cr,690,220,'PUBLIC SOURCES / PRELOADED HANDOFF / NO CAMERA DEVICE ACCESS',9,'dark_foreground')
+        for i,(label,value,color) in enumerate([('CAMERA POSITION',f"{cam['lat']:.4f}° / {cam['lon']:.4f}°",'accent'),('COVERAGE',f"{len(cameras)} SOURCES / {len({c['city'] for c in cameras})} CITIES",'cyan'),('NEXT OBSERVATION',('%02d seconds'%max(0,45-(time.monotonic()-viewer.started))) if viewer else 'WAITING','green')]):
+            x=690+i*292;self.text(cr,x,859,label,9,'dark_foreground');self.text(cr,x,886,value,12,color)
+        self.text(cr,690,928,'BASEMAP IS STORED AERIAL IMAGERY / CAMERA MEDIA IS LABELED BY TYPE',9,'dark_foreground')
+
+    def aviation(self,cr,t):
+        data=self.world_data;aircraft=data['aircraft'];lat,lon=data['flight_center']
+        age=time.time()-data['flight_updated'] if data['flight_updated'] else None
+        self.panel(cr,32,155,1000,787,'01','AIRSPACE OBSERVATION',data['flight_region'].upper()+' / 180 NM')
+        markers=[dict(lon=a['lon'],lat=a['lat'],heading=a['heading'],label=a['name'] if i<14 else '',color='cyan') for i,a in enumerate(aircraft)]
+        self.tiles.draw(self,cr,48,211,968,535,lon,lat,7,markers)
+        self.text(cr,58,783,data['flight_status'],10,'accent')
+        self.text(cr,58,810,('RECEIVED %.0f SECONDS AGO'%age) if age is not None else 'WAITING FOR PUBLIC AVIATION SOURCE',10,'dark_foreground')
+        self.text(cr,58,839,'Reported ADS-B positions / coverage varies / no route or destination inferred',10,'dark_foreground')
+        for i,a in enumerate(aircraft[:3]):
+            y=875+i*22;self.text(cr,58,y,f"{a['name']:<12} {str(a['altitude']):>7} ft   {str(a['speed']):>6} kt   {a['type']}",11,'foreground')
+        self.panel(cr,1048,155,520,787,'02','LIVE CONTACTS',str(len(aircraft))+' REPORTED')
+        for i,a in enumerate(aircraft[:25]):
+            y=224+i*27;self.text(cr,1068,y,a['name'][:11],11,'bright_foreground');self.text(cr,1195,y,('GROUND' if a['altitude']=='ground' else str(a['altitude'])+' ft' if a['altitude'] is not None else '—'),10,'accent');self.text(cr,1310,y,(str(a['speed'])+' kt' if a['speed'] is not None else '—'),10,'cyan');self.text(cr,1420,y,a['type'][:10],10,'dark_foreground')
+        self.text(cr,1068,922,'ADSB.lol / ODbL 1.0 / poll every 20s',9,'dark_foreground')
+
+    def road_conditions(self,cr,t):
+        data=self.world_data;roads=data['roads'];age=time.time()-data['road_updated'] if data['road_updated'] else None
+        self.panel(cr,32,155,1000,787,'01','ROAD CONDITIONS','LONDON / PUBLISHED DISRUPTIONS')
+        markers=[dict(lon=r['lon'],lat=r['lat'],color='red' if r['severity'].lower() in ('serious','severe') else 'yellow') for r in roads]
+        self.tiles.draw(self,cr,48,211,968,610,-.1278,51.5074,12,markers)
+        self.text(cr,58,856,data['road_status'],11,'accent')
+        self.text(cr,58,885,f"{len(roads)} published disruptions / "+(('received %.0fs ago'%age) if age is not None else 'waiting for source'),10,'dark_foreground')
+        self.text(cr,58,915,'Real incident locations / no simulated vehicle movement or inferred congestion speeds',10,'dark_foreground')
+        self.panel(cr,1048,155,520,787,'02','DISRUPTION BULLETIN','TfL / FIVE MINUTE REFRESH')
+        ordered=sorted(roads,key=lambda r:0 if r['severity'].lower() in ('serious','severe') else 1)
+        offset=(int(t/12)*6)%max(1,len(ordered))
+        for i,r in enumerate((ordered+ordered)[offset:offset+6]):
+            y=225+i*110;self.text(cr,1068,y,r['severity'].upper()+' / '+r['category'],11,'yellow');self.text(cr,1068,y+25,r['location'][:65],9,'bright_foreground');self.text(cr,1068,y+47,r['detail'][:65],9,'foreground');self.text(cr,1068,y+69,r['updated'][:19]+' / SOURCE UPDATE',8,'dark_foreground')
 
     def orbital(self,cr,t):
         data=self.orbits
         self.panel(cr,32,155,1100,787,'05','ORBITAL OBSERVATION','SGP4 / ISS + STARLINK / ESTIMATED POSITIONS')
         self.panel(cr,1148,155,420,787,'06','ORBIT ELEMENTS','PUBLIC / CELESTRAK')
-        x,y,w,h=55,235,1052,570
-        scale=min(w/360,h/180);ox=x+(w-360*scale)/2;oy=y+(h-180*scale)/2
-        def project(lon,lat):return ox+(lon+180)*scale,oy+(90-lat)*scale
-        for lon in range(-180,181,30):self.line(cr,*project(lon,90),*project(lon,-90),alpha=.2)
-        for lat in range(-90,91,30):self.line(cr,*project(-180,lat),*project(180,lat),alpha=.2)
-        for shape in LAND:
-            previous=None
-            for lon,lat in shape:
-                point=project(lon,lat)
-                if previous and abs(point[0]-previous[0])<w/2:self.line(cr,*previous,*point,'foreground',.4,.65)
-                previous=point
-        previous=None
-        for point in data['track']:
-            if point:
-                pixel=project(*point[:2])
-                if previous and abs(pixel[0]-previous[0])<w/2:self.line(cr,*previous,*pixel,'cyan',.8,1)
-                previous=pixel
-            else:previous=None
-        for i,item in enumerate(data['objects']):
-            px,py=project(*item['point'][:2]);selected=i==data.get('selected',0)
-            self.dot(cr,px,py,4 if selected else 1.6,'green' if selected else 'accent',1 if selected else .7)
-            if selected:self.text(cr,px+9,py-9,item['name'],10,'green')
+        target=data['objects'][data.get('selected',0)] if data['objects'] else None
+        lon,lat=(target['point'][:2] if target else (0,20))
+        markers=[dict(lon=o['point'][0],lat=o['point'][1],active=i==data.get('selected',0),label=o['name']) for i,o in enumerate(data['objects'])]
+        self.orbit_globe.draw(self,cr,580,510,295,lon,lat*.8,t,markers,data['track'])
+        self.text(cr,60,235,'E A R T H   O R B I T   O B S E R V A T I O N',12,'bright_foreground')
+        self.text(cr,60,262,'ISS / STARLINK / PROPAGATED GROUND POSITIONS',10,'dark_foreground')
         self.text(cr,58,865,data['status'][:135],10,'accent')
         self.text(cr,58,892,'Ground track: 45 minutes behind / 90 minutes ahead. Selection changes every 30 seconds.',9,'dark_foreground')
         self.text(cr,58,915,'Positions are calculated from orbital elements; this is not direct satellite telemetry.',10,'dark_foreground')
@@ -410,6 +415,9 @@ class Window(Gtk.Window):
         if self.camera_viewer:
             t=time.monotonic()-self.display.start;scene,phase,duration=scene_at(t)
             self.camera_viewer.update(scene in (0,2) and phase<duration-1.4)
+            if self.camera_viewer.played:
+                cam=self.camera_viewer.cameras[self.camera_viewer.index]
+                self.display.signals.set_region(cam['city'],cam['lat'],cam['lon'])
         self.view.queue_draw();return True
     def dismiss(self,*args):
         if self.parent_pid and not self.managed_preview:
@@ -426,6 +434,7 @@ class Window(Gtk.Window):
         return False
     def shutdown(self):
         if self.camera_viewer:self.camera_viewer.close();self.camera_viewer=None
+        if self.display.live:self.display.tiles.close()
         Gtk.main_quit();return False
 
 if __name__=='__main__':

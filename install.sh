@@ -3,7 +3,7 @@ set -euo pipefail
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 app_dir="$HOME/.local/share/sentinel-screensaver"
 mkdir -p "$app_dir" "$HOME/.local/bin"
-for file in display.py camera_viewer.py sentinel.py live.py orbits.py cameras.json coastlines.json requirements.txt; do
+for file in display.py cartography.py world_signals.py camera_viewer.py sentinel.py live.py orbits.py cameras.json coastlines.json requirements.txt; do
     install -m 644 "$source_dir/$file" "$app_dir/$file"
 done
 mkdir -p "$app_dir/vendor"

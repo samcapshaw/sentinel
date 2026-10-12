@@ -30,3 +30,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## Runtime map and observation sources
+
+Aerial basemap: Esri World Imagery. Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community. Attribution is displayed on each map. Imagery is fetched at runtime and is not bundled. https://goto.arcgisonline.com/maps/World_Imagery
+
+Aircraft observations: ADSB.lol, Open Database License (ODbL) 1.0. Data is fetched at runtime; no aircraft database is bundled. https://www.adsb.lol/docs/open-data/api/
+
+Road disruptions: Powered by TfL Open Data. https://tfl.gov.uk/info-for/open-data-users/
